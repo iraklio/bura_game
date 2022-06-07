@@ -26,19 +26,28 @@ const NULL_VALUE = 99
 @storage_var
 func bet() -> (res : felt):
 end
+
 @storage_var
 func trump()->(c:felt):
 end
 @storage_var
-func cards(player:felt, idx:felt)->(c:felt):
+func card1(idx:felt)->(c:felt):
 end
 
 @storage_var
-func challenge(idx:felt)->(c:felt):
+func card2(idx:felt)->(c:felt):
 end
 
 @storage_var
-func piles(player:felt) -> (pile:felt):
+func challenge( idx:felt)->(c:felt):
+end
+
+@storage_var
+func pile1() -> (pile:felt):
+end
+
+@storage_var
+func pile2() -> (pile:felt):
 end
 
 # Define a storage variable.
@@ -67,9 +76,7 @@ end
 func deck(idx: felt) -> (card:felt):
 end
 
-@storage_var
-func points(idx: felt) -> (card:felt):
-end
+
 
 
 @external
@@ -107,35 +114,37 @@ end
 
 
 func start_game{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
-    alloc_locals
 
-    let ( local p1) = player1.read()
-    let ( local p2) = player2.read()
-    
-    let (c1) = draw_next_card()    
+    let (p1) = player1.read()
+    let (p2) = player2.read()
+
+    challenger.write(p1)
+    responder.write(p2)
+    let (t) = deck.read(11)
+    let (div,_) = unsigned_div_rem(t,9)
+    trump.write(div)
+
+    let (c1) = draw_next_card()
+    card1.write(1, c1)
+
     let (c2) = draw_next_card()
-    let (c3) = draw_next_card()
-    let (c4) = draw_next_card()
-    let (c5) = draw_next_card()
-    let (c6) = draw_next_card()
+    card2.write(1, c2)
 
-    cards.write(p1, 1, c1)
-    cards.write(p2, 1, c2)
-    cards.write(p1, 2, c3)
-    cards.write(p2, 2, c4)   
-    cards.write(p1, 3, c5)    
-    cards.write(p2, 3, c6)
+    let (c3) = draw_next_card()
+    card1.write(2, c3)
+
+    let (c4) = draw_next_card()
+    card2.write(2,c4)
+
+    let (c5) = draw_next_card()
+    card1.write(3,c5)
+
+    let (c6) = draw_next_card()
+    card2.write(3,c6)
 
     challenge.write(1, NULL_VALUE)
     challenge.write(2, NULL_VALUE)
     challenge.write(3, NULL_VALUE)
-
-    challenger.write(p1)
-    responder.write(p2) 
-
-    let (t) = deck.read(11)
-    let (div,_) = unsigned_div_rem(t,9)
-    trump.write(div)
 
     return()
 end
@@ -145,76 +154,94 @@ func send_challenge1{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
 
     assert (idx-1)*(idx-2)*(idx-3) = 0
     let (sender) = get_caller_address()
-    let (ch) = challenger.read()    
+    let (ch) = challenger.read()
+    let (p1) = player1.read()
     assert sender = ch
 
-    let (cc) = cards.read(sender, idx)
+    let (cc) = card1.read(idx)
     challenge.write(1,cc)
-    cards.write(sender, idx, NULL_VALUE)    
+    card1.write(idx,NULL_VALUE)
+    #return()
+    
+    # if sender == p1:
+    #     let (cc) = card1.read(idx)
+    #     challenge.write(1,cc)
+    #     card1.write(idx,NULL_VALUE)
+    #     return()
+    # else:
+    #     let (cc) = card2.read(1)
+    #     challenge.write(1,cc)
+    #     card2.write(1,NULL_VALUE)
+    #     return()
+    # end 
     return()
 end
 
 
 @external
-func send_response1{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(idx):
-    alloc_locals
-
+func send_response1{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(idx:felt):
+    #alloc_locals
     assert (idx-1)*(idx-2)*(idx-3) = 0
-    #make sure response was sent by the responder
-    let (sender) = get_caller_address()
+    let (_reponder) = get_caller_address()
     let (rp) = responder.read()
-    let (ch) = challenger.read()    
-    assert sender = rp    
+    let (p1) = player1.read()
+    let (p2) = player2.read()
+    assert _reponder = rp
 
-    let (challenger_card) = challenge.read(1)
-    let (responder_card) = cards.read(sender, idx)
+    #make sure that its single card challenge
+    let (ch1) = challenge.read(1)
+    let (ch2) = challenge.read(2)
+    let (ch3) = challenge.read(3)
+    assert_nn_le(ch1,35)
+    assert ch2 = NULL_VALUE
+    assert ch3 = NULL_VALUE
 
-    let (challenger_suit, challenger_rank) = unsigned_div_rem(challenger_card, 9)    
-    let (responder_suit, responder_rank) = unsigned_div_rem(responder_card, 9)
+    # local syscall_ptr : felt* = syscall_ptr
 
-    #reset challenge and card
-    challenge.write(1, NULL_VALUE)
-    cards.write(sender, idx, NULL_VALUE) 
+    let (cc1) = challenge.read(1)
+    let (suit1, rank1) = unsigned_div_rem(cc1, 9)
 
-    if challenger_suit == responder_suit:        
-        let (res) = is_le(challenger_rank, responder_rank)
-        tempvar range_check_ptr = range_check_ptr
-        tempvar syscall_ptr : felt* = syscall_ptr
-        tempvar pedersen_ptr : HashBuiltin* = pedersen_ptr
-        #responder wins the round
-        if res == 1:
-            update_pile(rp, challenger_rank)
-            update_pile(rp, responder_rank) 
-            tempvar range_check_ptr = range_check_ptr       
-            tempvar syscall_ptr : felt* = syscall_ptr
-            tempvar pedersen_ptr : HashBuiltin* = pedersen_ptr
-        #challenger wins the round
-        else:            
-            update_pile(ch, challenger_rank)
-            update_pile(ch, responder_rank) 
-            tempvar range_check_ptr = range_check_ptr
-            tempvar syscall_ptr : felt* = syscall_ptr
-            tempvar pedersen_ptr : HashBuiltin* = pedersen_ptr 
-        end
+    if idx == 1:
+        #if rp == p1:            
+        # let (cc2) = card1_1.read()
+            #tempvar syscall_ptr = syscall_ptr
+            # let (suit2, rank2) = unsigned_div_rem(cc2, 9)
+            # if suit1 == suit2:
+            #     let (res) = is_le(rank1, rank2)
+            #     #responder wins the round
+            #     if res == 1: 
+            #         card1_1.write(NULL_VALUE)
+            #         challenge_1.write(NULL_VALUE)
+            #         update_pile(p1, cc1)
+            #         update_pile(p1, cc2)
+            #    #     return (show=1)
+            #     else:
+            #   #      return (show=0)
+            #     end
+            # end            
+        #else:            
+            #let ( cc2) = card2_1.read()
+            #tempvar syscall_ptr = syscall_ptr
+            # let ( suit2, rank2) = unsigned_div_rem(cc2, 9)
+            # if suit1 == suit2:
+            #     let (res) = is_le(rank1, rank2)
+            #     #responder wins the round
+            #     if res == 1:
+            #         card2_1.write(NULL_VALUE)
+            #         challenge_1.write(NULL_VALUE)
+            #         update_pile(p2, cc1)
+            #         update_pile(p2, cc2)
+            #  #       return (show=1)
+            #     else:
+            # #        return (show=0)
+            #     end
+            # end
+        #end
     else:
-        let (tr) = trump.read()
-        #responder wins the round
-        if tr == responder_suit:
-            update_pile(rp, challenger_rank)
-            update_pile(rp, responder_rank) 
-            tempvar range_check_ptr = range_check_ptr
-            tempvar syscall_ptr : felt* = syscall_ptr
-            tempvar pedersen_ptr : HashBuiltin* = pedersen_ptr
-        #challenger wins the round
-        else:
-            update_pile(ch, challenger_rank)
-            update_pile(ch, responder_rank) 
-            tempvar range_check_ptr = range_check_ptr
-            tempvar syscall_ptr : felt* = syscall_ptr
-            tempvar pedersen_ptr : HashBuiltin* = pedersen_ptr
-        end
+
     end
     return ()
+
 end
 
 
@@ -249,6 +276,12 @@ func get_head{syscall_ptr:felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}()
     return (res)
 end
 
+
+func update_pile{syscall_ptr:felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(player:felt, card:felt) -> ():    
+    return()
+end
+
+
 func draw_next_card{syscall_ptr:felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (res: felt):
     let (idx) = head.read()
     assert_nn_le(idx, 35)
@@ -256,15 +289,6 @@ func draw_next_card{syscall_ptr:felt*, pedersen_ptr : HashBuiltin*, range_check_
     head.write(idx+1)
     return(crd)
 end
-
-func update_pile{syscall_ptr:felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(player, rank):
-    let (res) = piles.read(player)    
-    let (pts) = points.read(rank)
-    piles.write(player, res + pts)
-    return()
-end
-
-
 
 @constructor
 func constructor{syscall_ptr:felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
@@ -303,17 +327,7 @@ func constructor{syscall_ptr:felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
     deck.write(32,value=1)
     deck.write(33,value=31)
     deck.write(34,value=20)
-    deck.write(35,value=15)
-
-    points.write(0,value=0)
-    points.write(1,value=0)
-    points.write(2,value=0)
-    points.write(3,value=0)
-    points.write(4,value=10)
-    points.write(5,value=2)
-    points.write(6,value=3)
-    points.write(7,value=4)
-    points.write(8,value=11)
+    deck.write(35,value=15)    
     return()
 end
 
