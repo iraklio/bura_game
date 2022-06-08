@@ -19,9 +19,43 @@ from starkware.cairo.common.math import (
     sqrt
     )
 
-
 const NULL_VALUE = 99
-
+const C6 = 0
+const C7 = 1
+const C8 = 2
+const C9 = 3
+const C10 = 4
+const CJ = 5
+const CQ = 6
+const CK = 7
+const CA = 8
+const D6 = 9
+const D7 = 10
+const D8 = 11
+const D9 = 12
+const D10 = 13
+const DJ = 14
+const DQ = 15
+const DK = 16
+const DA = 17
+const H6 = 18
+const H7 = 19
+const H8 = 20
+const H9 = 21
+const H10 = 22
+const HJ = 23
+const HQ = 24
+const HK = 25
+const HA = 26
+const S6 = 27
+const S7 = 28
+const S8 = 29
+const S9 = 30
+const S10 = 31
+const SJ = 32
+const SQ = 33
+const SK = 34
+const SA = 35
 
 @storage_var
 func bet() -> (res : felt):
@@ -184,7 +218,9 @@ func send_response1{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
         #responder wins the round
         if res == 1:
             update_pile(rp, challenger_rank)
-            update_pile(rp, responder_rank) 
+            update_pile(rp, responder_rank)
+            challenger.write(rp)
+            responder.write(ch)
             tempvar range_check_ptr = range_check_ptr       
             tempvar syscall_ptr : felt* = syscall_ptr
             tempvar pedersen_ptr : HashBuiltin* = pedersen_ptr
@@ -201,7 +237,9 @@ func send_response1{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
         #responder wins the round
         if tr == responder_suit:
             update_pile(rp, challenger_rank)
-            update_pile(rp, responder_rank) 
+            update_pile(rp, responder_rank)
+            challenger.write(rp)
+            responder.write(ch)
             tempvar range_check_ptr = range_check_ptr
             tempvar syscall_ptr : felt* = syscall_ptr
             tempvar pedersen_ptr : HashBuiltin* = pedersen_ptr
@@ -230,6 +268,13 @@ func get_trump{syscall_ptr:felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     let (t) = trump.read()
     return (t)
 end
+
+@view
+func get_pile{syscall_ptr:felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(p:felt)->(res:felt):
+    let (s) = piles.read(p)
+    return (s)
+end
+
 
 @view
 func get_player1{syscall_ptr:felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (res: felt):
@@ -268,42 +313,43 @@ end
 
 @constructor
 func constructor{syscall_ptr:felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
-    deck.write(0,value=0)
-    deck.write(1,value=22)
-    deck.write(2,value=8)
-    deck.write(3,value=33)
-    deck.write(4,value=10)
-    deck.write(5,value=5)
-    deck.write(6,value=7)
-    deck.write(7,value=2)
-    deck.write(8,value=25)
-    deck.write(9,value=24)
-    deck.write(10,value=30)
-    deck.write(11,value=29)
-    deck.write(12,value=34)
-    deck.write(13,value=12)
-    deck.write(14,value=35)
-    deck.write(15,value=19)
-    deck.write(16,value=3)
-    deck.write(17,value=13)
-    deck.write(18,value=28)
-    deck.write(19,value=26)
-    deck.write(20,value=9)
-    deck.write(21,value=14)
-    deck.write(22,value=27)
-    deck.write(23,value=32)
-    deck.write(24,value=16)
-    deck.write(25,value=17)
-    deck.write(26,value=4)
-    deck.write(27,value=6)
-    deck.write(28,value=21)
-    deck.write(29,value=11)
-    deck.write(30,value=18)
-    deck.write(31,value=23)
-    deck.write(32,value=1)
-    deck.write(33,value=31)
-    deck.write(34,value=20)
-    deck.write(35,value=15)
+
+    deck.write(0,value=C6)
+    deck.write(1,value=H10)
+    deck.write(2,value=CA)
+    deck.write(3,value=SQ)
+    deck.write(4,value=D7)
+    deck.write(5,value=CJ)
+    deck.write(6,value=CK)
+    deck.write(7,value=C8)
+    deck.write(8,value=HK)
+    deck.write(9,value=HQ)
+    deck.write(10,value=S9)
+    deck.write(11,value=S8)
+    deck.write(12,value=SK)
+    deck.write(13,value=D9)
+    deck.write(14,value=SA)
+    deck.write(15,value=H7)
+    deck.write(16,value=C9)
+    deck.write(17,value=D10)
+    deck.write(18,value=S7)
+    deck.write(19,value=HA)
+    deck.write(20,value=D6)
+    deck.write(21,value=DJ)
+    deck.write(22,value=S6)
+    deck.write(23,value=SJ)
+    deck.write(24,value=DK)
+    deck.write(25,value=DA)
+    deck.write(26,value=C10)
+    deck.write(27,value=CQ)
+    deck.write(28,value=H9)
+    deck.write(29,value=D8)
+    deck.write(30,value=H6)
+    deck.write(31,value=HJ)
+    deck.write(32,value=C7)
+    deck.write(33,value=S10)
+    deck.write(34,value=H8)
+    deck.write(35,value=DQ)
 
     points.write(0,value=0)
     points.write(1,value=0)

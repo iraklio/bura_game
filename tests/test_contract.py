@@ -69,8 +69,44 @@ async def contract_factory() -> Tuple[Starknet, Account, Account, StarknetContra
 #     )
 
 
+# @pytest.mark.asyncio
+# async def test_send_challenge1(contract_factory):
+#     """Test draw next card."""
+#     # Create a new Starknet class that simulates the StarkNet
+#     # system.
+
+#     _, player1_account, player2_account, contract = contract_factory
+
+#     await player1_account.signer.send_transaction(
+#         account=player1_account.contract,
+#         to=contract.contract_address,
+#         selector_name="join_game",
+#         calldata=[],
+#     )
+#     await player2_account.signer.send_transaction(
+#         account=player2_account.contract,
+#         to=contract.contract_address,
+#         selector_name="join_game",
+#         calldata=[],
+#     )
+
+#     idx = 2
+#     await player1_account.signer.send_transaction(
+#         account=player1_account.contract,
+#         to=contract.contract_address,
+#         selector_name="send_challenge1",
+#         calldata=[idx],
+#     )
+
+#     ch1 = await contract.get_challenge(1).invoke()
+#     ch2 = await contract.get_challenge(2).invoke()
+#     ch3 = await contract.get_challenge(3).invoke()
+
+#     assert (ch1.result == (8,)) and (ch2.result == (99,)) and (ch3.result == (99,))
+
+
 @pytest.mark.asyncio
-async def test_send_challenge1(contract_factory):
+async def test_send_responce1(contract_factory):
     """Test draw next card."""
     # Create a new Starknet class that simulates the StarkNet
     # system.
@@ -90,19 +126,28 @@ async def test_send_challenge1(contract_factory):
         calldata=[],
     )
 
-    idx = 2
+    idx1 = 2
     await player1_account.signer.send_transaction(
         account=player1_account.contract,
         to=contract.contract_address,
         selector_name="send_challenge1",
-        calldata=[idx],
+        calldata=[idx1],
     )
 
-    ch1 = await contract.get_challenge(1).invoke()
-    ch2 = await contract.get_challenge(2).invoke()
-    ch3 = await contract.get_challenge(3).invoke()
+    idx2 = 1
+    await player2_account.signer.send_transaction(
+        account=player2_account.contract,
+        to=contract.contract_address,
+        selector_name="send_response1",
+        calldata=[idx2],
+    )
 
-    assert (ch1.result == (8,)) and (ch2.result == (99,)) and (ch3.result == (99,))
+    p1 = await contract.get_pile(player1_account.contract.contract_address).invoke()
+    p2 = await contract.get_pile(player2_account.contract.contract_address).invoke()
+    # ch3 = await contract.get_challenge(3).invoke()
+
+    assert p2.result == (0,) and p1.result == (21,)
+    # assert p2.result == (14,) and p1.result == (0,)
     # assert 0 == 0
 
 
