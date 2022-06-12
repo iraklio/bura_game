@@ -44,7 +44,33 @@
                 "type": "felt"
             }
         ],
+        "name": "send_response1new",
+        "outputs": [],
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "idx",
+                "type": "felt"
+            }
+        ],
         "name": "send_response1",
+        "outputs": [],
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "idx1",
+                "type": "felt"
+            },
+            {
+                "name": "idx2",
+                "type": "felt"
+            }
+        ],
+        "name": "send_response2",
         "outputs": [],
         "type": "function"
     },
