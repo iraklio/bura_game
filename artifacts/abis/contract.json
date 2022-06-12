@@ -25,6 +25,21 @@
     {
         "inputs": [
             {
+                "name": "idx1",
+                "type": "felt"
+            },
+            {
+                "name": "idx2",
+                "type": "felt"
+            }
+        ],
+        "name": "send_challenge2",
+        "outputs": [],
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
                 "name": "idx",
                 "type": "felt"
             }
@@ -105,7 +120,52 @@
     },
     {
         "inputs": [],
+        "name": "get_challenger",
+        "outputs": [
+            {
+                "name": "res",
+                "type": "felt"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "get_responder",
+        "outputs": [
+            {
+                "name": "res",
+                "type": "felt"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
         "name": "get_head",
+        "outputs": [
+            {
+                "name": "res",
+                "type": "felt"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "player",
+                "type": "felt"
+            },
+            {
+                "name": "idx",
+                "type": "felt"
+            }
+        ],
+        "name": "get_card",
         "outputs": [
             {
                 "name": "res",
