@@ -44,17 +44,6 @@
                 "type": "felt"
             }
         ],
-        "name": "send_response1new",
-        "outputs": [],
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "name": "idx",
-                "type": "felt"
-            }
-        ],
         "name": "send_response1",
         "outputs": [],
         "type": "function"

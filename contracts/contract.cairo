@@ -224,109 +224,27 @@ end
 
 
 
-
-@external
-func send_response1new{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(idx):
+func win_loss_calc{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(ch_card,rp_card) -> (wl:felt):
     alloc_locals
+    let (ch_suit, ch_rank) = unsigned_div_rem(ch_card, 9)    
+    let (rp_suit, rp_rank) = unsigned_div_rem(rp_card, 9)
+    let (tr_suit) =  trump.read()
 
-    assert (idx-1)*(idx-2)*(idx-3) = 0
-    #make sure response was sent by the responder
-    let (sender) = get_caller_address()
-    let (rp) = responder.read()
-    let (ch) = challenger.read()    
-    assert sender = rp    
+    let (local s) = is_not_zero(rp_suit - ch_suit)
+    let (local t) = is_not_zero(rp_suit - tr_suit)
+    let (local r) = is_le(ch_rank, rp_rank)
 
-    let (challenger_card) = challenge.read(1)
-    let (responder_card) = cards.read(sender, idx)
+    let (wl) = win_loss.read(s,t,r)
+    return(wl=wl)
+end
 
-    let (challenger_suit, challenger_rank) = unsigned_div_rem(challenger_card, 9)    
-    let (responder_suit, responder_rank) = unsigned_div_rem(responder_card, 9)
-
-    #reset challenge
-    challenge.write(1, NULL_VALUE)
-    #cards.write(sender, idx, NULL_VALUE) 
-
-    if challenger_suit == responder_suit:        
-        let (res) = is_le(challenger_rank, responder_rank)
-        tempvar range_check_ptr = range_check_ptr
-        tempvar syscall_ptr : felt* = syscall_ptr
-        tempvar pedersen_ptr : HashBuiltin* = pedersen_ptr
-        #responder wins the round
-        if res == 1:        
-            #update piles
-            update_pile(rp, challenger_rank)
-            update_pile(rp, responder_rank)
-            #draw new card for responder
-            let (next_card) = draw_next_card()
-            cards.write(rp, idx, next_card)            
-            #draw new card for challenger
-            let (next_card2) = draw_next_card()
-            let (idx2) = card_idx.read(1)
-            cards.write(ch, idx2, next_card2)
-            #swap responder and challenger
-            challenger.write(rp)
-            responder.write(ch)
-            #keep track of implicit arguments so they don't get revoked
-            tempvar range_check_ptr = range_check_ptr       
-            tempvar syscall_ptr : felt* = syscall_ptr
-            tempvar pedersen_ptr : HashBuiltin* = pedersen_ptr
-        #challenger wins the round
-        else:
-            #update piles            
-            update_pile(ch, challenger_rank)
-            update_pile(ch, responder_rank) 
-            #draw new card for challenger
-            let (next_card) = draw_next_card()
-            let (idx2) = card_idx.read(1)
-            cards.write(ch, idx2, next_card)            
-            #draw new card for responder
-            let (next_card2) = draw_next_card()            
-            cards.write(rp, idx, next_card2)
-            #keep track of implicit arguments so they don't get revoked
-            tempvar range_check_ptr = range_check_ptr
-            tempvar syscall_ptr : felt* = syscall_ptr
-            tempvar pedersen_ptr : HashBuiltin* = pedersen_ptr 
-        end
+func max{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(a,b) -> (res:felt):    
+    let (r) = is_le(a, b)
+    if r==1:
+        return(b)
     else:
-        let (tr) = trump.read()
-        #responder wins the round
-        if tr == responder_suit:
-            #update piles
-            update_pile(rp, challenger_rank)
-            update_pile(rp, responder_rank)
-            #draw new card for responder
-            let (next_card) = draw_next_card()
-            cards.write(rp, idx, next_card)            
-            #draw new card for challenger
-            let (next_card2) = draw_next_card()
-            let (idx2) = card_idx.read(1)
-            cards.write(ch, idx2, next_card2)
-            #swap responder and challenger            
-            challenger.write(rp)
-            responder.write(ch)
-            #keep track of implicit arguments so they don't get revoked
-            tempvar range_check_ptr = range_check_ptr
-            tempvar syscall_ptr : felt* = syscall_ptr
-            tempvar pedersen_ptr : HashBuiltin* = pedersen_ptr
-        #challenger wins the round
-        else:
-            #update piles
-            update_pile(ch, challenger_rank)
-            update_pile(ch, responder_rank)
-            #draw new card for challenger
-            let (next_card) = draw_next_card()
-            let (idx2) = card_idx.read(1)
-            cards.write(ch, idx2, next_card)            
-            #draw new card for responder
-            let (next_card2) = draw_next_card()            
-            cards.write(rp, idx, next_card2)
-            #keep track of implicit arguments so they don't get revoked
-            tempvar range_check_ptr = range_check_ptr
-            tempvar syscall_ptr : felt* = syscall_ptr
-            tempvar pedersen_ptr : HashBuiltin* = pedersen_ptr
-        end
+        return(a)
     end
-    return ()
 end
 
 
@@ -343,16 +261,10 @@ func send_response1{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
 
     let (ch_card) = challenge.read(1)
     let (rp_card) = cards.read(sender, idx)
+    let (_, ch_rank) = unsigned_div_rem(ch_card, 9)    
+    let (_, rp_rank) = unsigned_div_rem(rp_card, 9)
 
-    let (ch_suit, ch_rank) = unsigned_div_rem(ch_card, 9)    
-    let (rp_suit, rp_rank) = unsigned_div_rem(rp_card, 9)
-    let (tr_suit) =  trump.read()
-
-    let (s) = is_not_zero(rp_suit - ch_suit)
-    let (t)= is_not_zero(rp_suit - tr_suit)
-    let (r) = is_le(ch_rank, rp_rank)
-
-    let (wl) = win_loss.read(s,t,r)
+    let (wl) = win_loss_calc(ch_card, rp_card)
 
     #responder wins
     if wl == 1:
@@ -390,14 +302,8 @@ func send_response1{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
         # tempvar syscall_ptr : felt* = syscall_ptr
         # tempvar pedersen_ptr : HashBuiltin* = pedersen_ptr
     end
-
-
     #reset challenge
-    challenge.write(1, NULL_VALUE)
-
-    
-
-    
+    #challenge.write(1, NULL_VALUE)
     return ()
 end
 
@@ -419,16 +325,67 @@ func send_response2{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
     let (rp_card1) = cards.read(sender, idx1)
     let (rp_card2) = cards.read(sender, idx2)
 
-    let (ch_suit1, ch_rank1) = unsigned_div_rem(ch_card1, 9)    
-    let (ch_suit2, ch_rank2) = unsigned_div_rem(ch_card2, 9)    
+    let (tr_suit) = trump.read()
 
-    let (rp_suit1, rp_rank1) = unsigned_div_rem(rp_card1, 9)
-    let (rp_suit2, rp_rank2) = unsigned_div_rem(rp_card2, 9)
+    let ( _, ch_rank1) = unsigned_div_rem(ch_card1, 9)    
+    let ( _, ch_rank2) = unsigned_div_rem(ch_card2, 9)    
 
-    #reset challenge
-    challenge.write(1, NULL_VALUE)
-    challenge.write(2, NULL_VALUE)
+    let ( _, rp_rank1) = unsigned_div_rem(rp_card1, 9)
+    let ( _, rp_rank2) = unsigned_div_rem(rp_card2, 9)
 
+    let (wl11) = win_loss_calc(ch_card1, rp_card1)
+    let (wl22) = win_loss_calc(ch_card2, rp_card2)
+
+    let (wl12) = win_loss_calc(ch_card1, rp_card2)
+    let (wl21) = win_loss_calc(ch_card2, rp_card1)    
+    let (wl) = max(wl11 + wl22, wl12 + wl21)
+
+    #responder wins
+    if wl == 2:
+        #update piles
+        update_pile(rp, ch_rank1)
+        update_pile(rp, rp_rank1)
+        update_pile(rp, ch_rank2)
+        update_pile(rp, rp_rank2)
+        #draw 1st new card for responder
+        let (next_card1) = draw_next_card()
+        cards.write(rp, idx1, next_card1)            
+        #draw 1st new card for challenger
+        let (other_next_card1) = draw_next_card()
+        let (other_idx1) = card_idx.read(1)
+        cards.write(ch, other_idx1, other_next_card1)
+        #draw 2nd new card for responder
+        let (next_card2) = draw_next_card()
+        cards.write(rp, idx2, next_card2)            
+        #draw 2nd new card for challenger
+        let (other_next_card2) = draw_next_card()
+        let (other_idx2) = card_idx.read(2)
+        cards.write(ch, other_idx2, other_next_card2)
+        #swap responder and challenger
+        challenger.write(rp)
+        responder.write(ch)        
+    #challenger wins
+    else:
+        #update piles
+        update_pile(ch, ch_rank1)
+        update_pile(ch, rp_rank1)
+        update_pile(ch, ch_rank2)
+        update_pile(ch, rp_rank2)
+        #draw 1st new card for challenger
+        let (other_next_card1) = draw_next_card()
+        let (other_idx1) = card_idx.read(1)
+        cards.write(ch, other_idx1, other_next_card1)            
+        #draw 1st new card for responder
+        let (next_card1) = draw_next_card()            
+        cards.write(rp, idx1, next_card1)
+        #draw 2st new card for challenger
+        let (other_next_card2) = draw_next_card()
+        let (other_idx2) = card_idx.read(2)
+        cards.write(ch, other_idx2, other_next_card2)            
+        #draw 2nd new card for responder
+        let (next_card2) = draw_next_card()            
+        cards.write(rp, idx2, next_card2)        
+    end    
     return ()
 end
 
