@@ -130,7 +130,24 @@
     },
     {
         "inputs": [],
-        "name": "raise_round_point",
+        "name": "claim_win",
+        "outputs": [],
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "raise_round_point_challenge",
+        "outputs": [],
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "resp",
+                "type": "felt"
+            }
+        ],
+        "name": "raise_round_point_responce",
         "outputs": [],
         "type": "function"
     },

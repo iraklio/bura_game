@@ -80,6 +80,10 @@ func round_point()->(c:felt):
 end
 
 @storage_var
+func round_point_challenge_sent()->(c:felt):
+end
+
+@storage_var
 func round_point_caller()->(c:felt):
 end
 
@@ -249,7 +253,6 @@ func send_challenge2{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
     return()
 end
 
-
 @external
 func send_challenge3{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(idx1, idx2, idx3) -> ():
 
@@ -326,6 +329,7 @@ func send_response1{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
         #swap responder and challenger
         challenger.write(rp)
         responder.write(ch)
+        check_round_status_no_more_cards()
         return(rp_card)
     #challenger wins
     else:
@@ -338,14 +342,14 @@ func send_response1{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
         cards.write(ch, idx2, next_card)            
         #draw new card for responder
         let (next_card2) = draw_next_card()            
-        cards.write(rp, idx, next_card2)        
+        cards.write(rp, idx, next_card2)
+        check_round_status_no_more_cards()
         return(NULL_CARD)
     end
     #reset challenge
     #challenge.write(1, NULL_CARD)
     #return ()
 end
-
 
 @external
 func send_response2{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(idx1, idx2)->(c1:felt,c2:felt):
@@ -406,6 +410,7 @@ func send_response2{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
         #swap responder and challenger
         challenger.write(rp)
         responder.write(ch)        
+        check_round_status_no_more_cards()
         return(rp_card1, rp_card2)
     #challenger wins
     else:
@@ -428,11 +433,11 @@ func send_response2{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
         #draw 2nd new card for responder
         let (next_card2) = draw_next_card()            
         cards.write(rp, idx2, next_card2)
+        check_round_status_no_more_cards()
         return(NULL_CARD,NULL_CARD)        
     end    
     
 end
-
 
 @external
 func send_response3{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(idx1, idx2, idx3)->(c1:felt,c2:felt,c3:felt):
@@ -523,6 +528,7 @@ func send_response3{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
         #swap responder and challenger
         challenger.write(rp)
         responder.write(ch)
+        check_round_status_no_more_cards()
         return(rp_card1, rp_card2, rp_card3)        
     #challenger wins
     else:
@@ -557,22 +563,136 @@ func send_response3{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
         #draw 3rd new card for responder
         let (next_card3) = draw_next_card()            
         cards.write(rp, idx3, next_card3)
+        check_round_status_no_more_cards()
         return(NULL_CARD,NULL_CARD,NULL_CARD)
     end    
 end
 
+func check_round_status_no_more_cards{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
+    let (idx) = head.read()
+    if idx == 41:
+        #Someone is a round winner    
+        tempvar syscall_ptr = syscall_ptr
+        tempvar pedersen_ptr = pedersen_ptr
+        tempvar range_check_ptr = range_check_ptr
+        assign_round_win_loss_claimed()
+    else:
+        tempvar syscall_ptr = syscall_ptr
+        tempvar pedersen_ptr = pedersen_ptr
+        tempvar range_check_ptr = range_check_ptr
+    end
+    return()
+end
+
+func assign_round_win_loss_claimed{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
+
+    alloc_locals
+    let (local ch) = challenger.read()
+    let (local rp) = responder.read() 
+    let (local ch_pile) = piles.read(ch)
+    let (local le) = is_le(31,ch_pile)
+    let (local rpts) = round_point.read()         
+    #reset_round()
+        
+    if le == 1:
+        #challenger is a winner
+        let (score) = scores.read(ch)
+        scores.write(ch, score + rpts)        
+        check_game_status(rp)
+    else:                      
+        #responder is a winner      
+        let (score) = scores.read(rp)
+        scores.write(rp, score + rpts)        
+        check_game_status(rp)
+    end
+    return()
+end
+
+
+func assign_round_win_loss_raise_not_accepted{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(winner):
+    let (rpts) = round_point.read()
+    let (score) = scores.read(winner)
+    scores.write(winner, score + rpts)
+    start_new_round()
+    check_game_status(winner)    
+    return()
+end
+
+
+func start_new_round{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
+
+    return()
+end
+
+
+func check_game_status{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(player):
+
+    alloc_locals
+    let (local player_score) = scores.read(player)
+    let (local le) = is_le(WINNING_SCORE,player_score)
+    if le == 1:    
+        #player won the game
+        tempvar syscall_ptr = syscall_ptr
+        tempvar pedersen_ptr = pedersen_ptr
+        tempvar range_check_ptr = range_check_ptr
+        assign_game_win_loss(player)
+    else:
+        tempvar syscall_ptr = syscall_ptr
+        tempvar pedersen_ptr = pedersen_ptr
+        tempvar range_check_ptr = range_check_ptr
+    end
+    return()
+end
+
+func assign_game_win_loss{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(player):
+    #TO DO. Implement logic of what happens when game is over, and player wins
+    return()
+end
+
+#Challenger can claim the win at any time during the game. 
+@external
+func claim_win{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
+    
+    let (caller) = get_caller_address()
+    let (ch) = challenger.read()
+    assert caller = ch 
+    assign_round_win_loss_claimed()
+    return()
+end
+
+
 #Round point can be raised up to 6
 @external
-func raise_round_point{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
+func raise_round_point_challenge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
     let (sender) = get_caller_address()
-    let (previous_caller) = round_point_caller.read()        
+    let (previous_caller) = round_point_caller.read()
     assert_not_equal(sender, previous_caller)
     let (previous_round_point) = round_point.read()
     assert_lt(previous_round_point,6)
-    round_point.write(previous_round_point + 1)
     round_point_caller.write(sender)
+    round_point_challenge_sent.write(1)
     return()
 end
+
+@external
+func raise_round_point_responce{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(resp):
+
+    assert resp*(resp-1) = 0
+    let (caller) = get_caller_address()
+    let (previous_caller) = round_point_caller.read()   
+    assert_not_equal(caller, previous_caller)
+    let (previous_round_point) = round_point.read()
+
+    if resp == 1:
+        round_point.write(previous_round_point + 1)
+    else:
+        #Responder does not accept the raise. Round is over.
+        assign_round_win_loss_raise_not_accepted(previous_caller)
+    end   
+    
+    return()
+end
+
 
 @view
 func get_challenge{ syscall_ptr:felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(idx) -> (res: felt):
@@ -606,7 +726,6 @@ func get_player2{syscall_ptr:felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
     return (p)
 end
 
-
 @view
 func get_challenger{syscall_ptr:felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (res: felt):
     let (p) = challenger.read()
@@ -638,11 +757,14 @@ func get_head{syscall_ptr:felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}()
 end
 
 func draw_next_card{syscall_ptr:felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (res: felt):
-    let (idx) = head.read()
-    if idx == 36:
+    alloc_locals
+    let (local idx) = head.read()    
+    let (le) = is_le(36, idx)
+    if le == 1:
+        head.write(idx+1)
         return (NULL_CARD)
-    end    
-    let (crd) = deck.read(idx)
+    end  
+    let (crd) = deck.read(idx)    
     head.write(idx+1)
     return(crd)
 end
@@ -744,6 +866,9 @@ func constructor{syscall_ptr:felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
     points.write(6,value=3)
     points.write(7,value=4)
     points.write(8,value=11)
+
+    round_point.write(1)
+
     return()
 end
 
