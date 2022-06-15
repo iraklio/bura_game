@@ -40,12 +40,36 @@
     {
         "inputs": [
             {
+                "name": "idx1",
+                "type": "felt"
+            },
+            {
+                "name": "idx2",
+                "type": "felt"
+            },
+            {
+                "name": "idx3",
+                "type": "felt"
+            }
+        ],
+        "name": "send_challenge3",
+        "outputs": [],
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
                 "name": "idx",
                 "type": "felt"
             }
         ],
         "name": "send_response1",
-        "outputs": [],
+        "outputs": [
+            {
+                "name": "c1",
+                "type": "felt"
+            }
+        ],
         "type": "function"
     },
     {
@@ -60,6 +84,53 @@
             }
         ],
         "name": "send_response2",
+        "outputs": [
+            {
+                "name": "c1",
+                "type": "felt"
+            },
+            {
+                "name": "c2",
+                "type": "felt"
+            }
+        ],
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "idx1",
+                "type": "felt"
+            },
+            {
+                "name": "idx2",
+                "type": "felt"
+            },
+            {
+                "name": "idx3",
+                "type": "felt"
+            }
+        ],
+        "name": "send_response3",
+        "outputs": [
+            {
+                "name": "c1",
+                "type": "felt"
+            },
+            {
+                "name": "c2",
+                "type": "felt"
+            },
+            {
+                "name": "c3",
+                "type": "felt"
+            }
+        ],
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "raise_round_point",
         "outputs": [],
         "type": "function"
     },
@@ -148,6 +219,30 @@
     {
         "inputs": [],
         "name": "get_responder",
+        "outputs": [
+            {
+                "name": "res",
+                "type": "felt"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "get_round_point",
+        "outputs": [
+            {
+                "name": "res",
+                "type": "felt"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "get_round_point_caller",
         "outputs": [
             {
                 "name": "res",
