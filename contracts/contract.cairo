@@ -2,11 +2,11 @@
 %lang starknet
 
 from starkware.cairo.common.cairo_builtins import HashBuiltin
+from starkware.cairo.common.cairo_builtins import BitwiseBuiltin
 
-from starkware.starknet.common.syscalls import (
-    get_caller_address
-)
-
+from starkware.cairo.common.bitwise import bitwise_and
+from starkware.starknet.common.syscalls import get_caller_address
+from starkware.cairo.common.hash import hash2
 from starkware.cairo.common.math_cmp import is_le, is_in_range, is_not_zero
 from starkware.cairo.common.math import ( 
     abs_value, 
@@ -25,6 +25,7 @@ from starkware.cairo.common.math import (
 
 const WINNING_SCORE = 21
 const NULL_CARD = 99
+const TWO_TO_128_MINUS_ONE = 340282366920938463463374607431768211455 #2^128-1 
 const C6 = 0
 const C7 = 1
 const C8 = 2
@@ -137,18 +138,28 @@ func points(idx: felt) -> (card:felt):
 end
 
 
+@storage_var
+func seed1() -> (seed:felt):
+end
+
+@storage_var
+func seed2() -> (seed:felt):
+end
+
 @external
-func join_game{ syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> ():
+func join_game{ syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*}(seed):
 
     let (sender) = get_caller_address()
     let (p1) = player1.read()
     if p1 == 0:
         player1.write(sender)
+        seed1.write(seed)
         return()
     else:
         let (p2) = player2.read()
         if p2 == 0:            
             player2.write(sender)
+            seed2.write(seed)
             start_game()
             return()
         else:
@@ -157,9 +168,8 @@ func join_game{ syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
     end
 end
 
-
 @external
-func leave_game{ syscall_ptr : felt*,  pedersen_ptr : HashBuiltin*, range_check_ptr}():
+func leave_game{syscall_ptr : felt*,  pedersen_ptr : HashBuiltin*, range_check_ptr}():
 
     let (sender) = get_caller_address()
     let (p1) = player1.read()
@@ -171,11 +181,13 @@ func leave_game{ syscall_ptr : felt*,  pedersen_ptr : HashBuiltin*, range_check_
 end
 
 
-func start_game{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
+func start_game{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*}():
     alloc_locals
 
-    let ( local p1) = player1.read()
-    let ( local p2) = player2.read()
+    let (local p1) = player1.read()
+    let (local p2) = player2.read()
+
+    #fisher_yates_shuffle()
     
     let (c1) = draw_next_card()    
     let (c2) = draw_next_card()
@@ -592,8 +604,8 @@ func assign_round_win_loss_claimed{syscall_ptr : felt*, pedersen_ptr : HashBuilt
     let (local ch_pile) = piles.read(ch)
     let (local le) = is_le(31,ch_pile)
     let (local rpts) = round_point.read()         
-    #reset_round()
-        
+    round_reset()
+            
     if le == 1:
         #challenger is a winner
         let (score) = scores.read(ch)
@@ -608,22 +620,27 @@ func assign_round_win_loss_claimed{syscall_ptr : felt*, pedersen_ptr : HashBuilt
     return()
 end
 
-
 func assign_round_win_loss_raise_not_accepted{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(winner):
     let (rpts) = round_point.read()
     let (score) = scores.read(winner)
     scores.write(winner, score + rpts)
-    start_new_round()
+    round_reset()
     check_game_status(winner)    
     return()
 end
 
+func round_reset{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
+    round_point.write(1)
+    round_point_challenge_sent.write(0)
+    round_point_caller.write(0)
 
-func start_new_round{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
-
+    let (p1) = player1.read()    
+    piles.write(p1,value=0)
+    let (p2) = player2.read()    
+    piles.write(p2,value=0)        
+    head.write(0)
     return()
 end
-
 
 func check_game_status{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(player):
 
@@ -646,6 +663,40 @@ end
 
 func assign_game_win_loss{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(player):
     #TO DO. Implement logic of what happens when game is over, and player wins
+
+    let (p1) = player1.read()   
+    let (p2) = player2.read()
+
+    round_point.write(1)
+    round_point_challenge_sent.write(0)
+    round_point_caller.write(0)
+    
+    challenge.write(1, value=NULL_CARD)
+    challenge.write(2, value=NULL_CARD)
+    challenge.write(3, value=NULL_CARD)
+    
+    card_idx.write(1, value=0)
+    card_idx.write(2, value=0)
+    card_idx.write(3, value=0)
+    
+    piles.write(p1,value=0)    
+    piles.write(p2,value=0)
+
+    cards.write(p1,1, value=NULL_CARD)
+    cards.write(p1,2, value=NULL_CARD)
+    cards.write(p1,3, value=NULL_CARD)
+    cards.write(p2,1, value=NULL_CARD)
+    cards.write(p2,2, value=NULL_CARD)
+    cards.write(p2,3, value=NULL_CARD)
+    
+    challenger.write(0)
+    responder.write(0)
+    player1.write(0)
+    player2.write(0)
+    head.write(0)
+
+    trump.write(NULL_CARD)
+
     return()
 end
 
@@ -659,7 +710,6 @@ func claim_win{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
     assign_round_win_loss_claimed()
     return()
 end
-
 
 #Round point can be raised up to 6
 @external
@@ -685,6 +735,7 @@ func raise_round_point_responce{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*
 
     if resp == 1:
         round_point.write(previous_round_point + 1)
+        round_point_challenge_sent.write(0)
     else:
         #Responder does not accept the raise. Round is over.
         assign_round_win_loss_raise_not_accepted(previous_caller)
@@ -692,7 +743,6 @@ func raise_round_point_responce{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*
     
     return()
 end
-
 
 @view
 func get_challenge{ syscall_ptr:felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(idx) -> (res: felt):
@@ -713,6 +763,11 @@ func get_pile{syscall_ptr:felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(p
     return (s)
 end
 
+@view
+func get_score{syscall_ptr:felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(p:felt)->(res:felt):
+    let (s) = scores.read(p)
+    return (s)
+end
 
 @view
 func get_player1{syscall_ptr:felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (res: felt):
@@ -741,6 +796,12 @@ end
 @view
 func get_round_point{syscall_ptr:felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (res: felt):
     let (p) = round_point.read()
+    return (p)
+end
+
+@view
+func get_round_point_challenge_sent{syscall_ptr:felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (res: felt):
+    let (p) = round_point_challenge_sent.read()
     return (p)
 end
 
@@ -799,7 +860,49 @@ func max{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(a,b)
     end
 end
 
+@external
+func fisher_yates_shuffle{ syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*}():
+    alloc_locals
+    let (s1) = seed1.read()
+    let (s2) = seed2.read()
+    let (h1) = fisher_yates_helper(s1, s2, 35, 34, 33, 32, 31)
+    let (h2) = fisher_yates_helper(s2, h1, 30, 29, 28, 27, 26)
+    let (h3) = fisher_yates_helper(h1, h2, 25, 24, 23, 22, 21)
+    let (h4) = fisher_yates_helper(h2, h3, 20, 19, 18, 17, 16)
+    let (h5) = fisher_yates_helper(h3, h4, 15, 14, 13, 12, 11)
+    let (h6) = fisher_yates_helper(h4, h5, 10,  9,  8,  7,  6)
+    let (h7) = fisher_yates_helper(h5, h6,  5,  4,  3,  2,  1)
+    #update seeds for need round shuffle
+    seed1.write(h6)
+    seed2.write(h7)
+    return ()
+end
 
+func fisher_yates_helper{ syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*}(x,y, i1, i2, i3, i4, i5) -> (h):
+    alloc_locals
+    let (h) = hash2{hash_ptr = pedersen_ptr}(x,y)
+    let (d0) = bitwise_and(h, TWO_TO_128_MINUS_ONE)
+    let (d1, r1) = unsigned_div_rem(d0,i1)
+    swap_cards(r1, i1)
+    let (d2, r2) = unsigned_div_rem(d1,i2)
+    swap_cards(r2, i2)
+    let (d3, r3) = unsigned_div_rem(d2,i3)
+    swap_cards(r3, i3)
+    let (d4, r4) = unsigned_div_rem(d3,i4)
+    swap_cards(r4, i4)
+    let (d5, r5) = unsigned_div_rem(d4,i5)    
+    swap_cards(r5, i5)
+    return (h=h)
+end
+
+func swap_cards{ syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(i,j):
+
+    let (a_i) = deck.read(i)
+    let (a_j) = deck.read(j)
+    deck.write(i, a_j)
+    deck.write(j, a_i)
+    return()
+end
 
 @view
 func get_card{syscall_ptr:felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(player, idx) -> (res: felt):
@@ -871,10 +974,4 @@ func constructor{syscall_ptr:felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
 
     return()
 end
-
-
-
-
-
-
 

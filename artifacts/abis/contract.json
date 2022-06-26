@@ -1,6 +1,11 @@
 [
     {
-        "inputs": [],
+        "inputs": [
+            {
+                "name": "seed",
+                "type": "felt"
+            }
+        ],
         "name": "join_game",
         "outputs": [],
         "type": "function"
@@ -198,6 +203,23 @@
         "type": "function"
     },
     {
+        "inputs": [
+            {
+                "name": "p",
+                "type": "felt"
+            }
+        ],
+        "name": "get_score",
+        "outputs": [
+            {
+                "name": "res",
+                "type": "felt"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
         "inputs": [],
         "name": "get_player1",
         "outputs": [
@@ -259,6 +281,18 @@
     },
     {
         "inputs": [],
+        "name": "get_round_point_challenge_sent",
+        "outputs": [
+            {
+                "name": "res",
+                "type": "felt"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
         "name": "get_round_point_caller",
         "outputs": [
             {
@@ -279,6 +313,12 @@
             }
         ],
         "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "fisher_yates_shuffle",
+        "outputs": [],
         "type": "function"
     },
     {
