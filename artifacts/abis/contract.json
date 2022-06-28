@@ -316,17 +316,7 @@
         "type": "function"
     },
     {
-        "inputs": [],
-        "name": "fisher_yates_shuffle",
-        "outputs": [],
-        "type": "function"
-    },
-    {
         "inputs": [
-            {
-                "name": "player",
-                "type": "felt"
-            },
             {
                 "name": "idx",
                 "type": "felt"

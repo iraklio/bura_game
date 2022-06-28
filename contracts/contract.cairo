@@ -187,7 +187,7 @@ func start_game{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
     let (local p1) = player1.read()
     let (local p2) = player2.read()
 
-    #fisher_yates_shuffle()
+    fisher_yates_shuffle()
     
     let (c1) = draw_next_card()    
     let (c2) = draw_next_card()
@@ -207,10 +207,23 @@ func start_game{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
     challenge.write(2, NULL_CARD)
     challenge.write(3, NULL_CARD)
 
-    challenger.write(p1)
-    responder.write(p2) 
+    #randomly choose the challenger
+    let (s1) = seed1.read()
+    let (d1) = bitwise_and(s1, TWO_TO_128_MINUS_ONE)
+    let (_, odd_or_even) = unsigned_div_rem(d1,2)
+    if odd_or_even == 0:
+        challenger.write(p1)
+        responder.write(p2) 
+    else:
+        challenger.write(p2)
+        responder.write(p1) 
+    end
 
-    let (t) = deck.read(11)
+    #randomly choose the the trump
+    let (s2) = seed2.read()
+    let (d2) = bitwise_and(s2, TWO_TO_128_MINUS_ONE)
+    let (_, trump_idx) = unsigned_div_rem(d2,36)
+    let (t) = deck.read(trump_idx)
     let (div,_) = unsigned_div_rem(t,9)
     trump.write(div)
 
@@ -240,6 +253,7 @@ func send_challenge2{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
 
     assert (idx1-1)*(idx1-2)*(idx1-3) = 0
     assert (idx2-1)*(idx2-2)*(idx2-3) = 0
+    assert_not_equal(idx1, idx2)
 
     let (sender) = get_caller_address()
     let (ch) = challenger.read()
@@ -271,6 +285,10 @@ func send_challenge3{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
     assert (idx1-1)*(idx1-2)*(idx1-3) = 0
     assert (idx2-1)*(idx2-2)*(idx2-3) = 0
     assert (idx3-1)*(idx3-2)*(idx3-3) = 0
+
+    assert_not_equal(idx1, idx2)
+    assert_not_equal(idx2, idx3)
+    assert_not_equal(idx1, idx3)
 
     let (sender) = get_caller_address()
     let (ch) = challenger.read()
@@ -369,6 +387,8 @@ func send_response2{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
 
     assert (idx1-1)*(idx1-2)*(idx1-3) = 0
     assert (idx2-1)*(idx2-2)*(idx2-3) = 0
+    assert_not_equal(idx1, idx2)
+
     #make sure response was sent by the responder
     let (sender) = get_caller_address()
     let (rp) = responder.read()
@@ -457,6 +477,9 @@ func send_response3{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
     assert (idx1-1)*(idx1-2)*(idx1-3) = 0
     assert (idx2-1)*(idx2-2)*(idx2-3) = 0
     assert (idx3-1)*(idx3-2)*(idx3-3) = 0
+    assert_not_equal(idx1, idx2)
+    assert_not_equal(idx2, idx3)
+    assert_not_equal(idx1, idx3)
     #make sure response was sent by the responder
     let (sender) = get_caller_address()
     let (rp) = responder.read()
@@ -860,7 +883,6 @@ func max{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(a,b)
     end
 end
 
-@external
 func fisher_yates_shuffle{ syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*}():
     alloc_locals
     let (s1) = seed1.read()
@@ -905,9 +927,10 @@ func swap_cards{ syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
 end
 
 @view
-func get_card{syscall_ptr:felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(player, idx) -> (res: felt):
-    assert (idx-1)*(idx-2)*(idx-3) = 0
-    let (res) = cards.read(player, idx)
+func get_card{syscall_ptr:felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(idx) -> (res: felt):
+    assert (idx-1)*(idx-2)*(idx-3) = 0    
+    let (sender) = get_caller_address()    
+    let (res) = cards.read(sender, idx)
     return(res)
 end
 
