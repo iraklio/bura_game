@@ -229,17 +229,20 @@ async def game_simulator():
 
         if challenger == address1:
             cards = await get_cards("1", account1, contract)
-            # claim_win(account1, contract)
+            claim_win(account1, contract)
             await send_challenge(account1, contract, cards)
         else:
             cards = await get_cards("2", account2, contract)
+            claim_win(account2, contract)
             await send_challenge(account2, contract, cards)
 
         if responder == address1:
             cards = await get_cards("1", account1, contract)
+            claim_win(account1, contract)
             await send_response(account1, contract)
         else:
             cards = await get_cards("2", account2, contract)
+            claim_win(account2, contract)
             await send_response(account2, contract)
 
 

@@ -23,7 +23,7 @@ from starkware.cairo.common.math import (
     )
 
 
-const WINNING_SCORE = 21
+const WINNING_SCORE = 11
 const NULL_CARD = 99
 const TWO_TO_128_MINUS_ONE = 340282366920938463463374607431768211455 #2^128-1 
 const C6 = 0
@@ -559,136 +559,85 @@ func send_response3{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
     end    
 end
 
-# func assign_round_win_loss_raise_not_accepted{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(winner):
-#     let (rpts) = round_point.read()
-#     let (score) = scores.read(winner)
-#     scores.write(winner, score + rpts)
-#     return()
-# end
-
-# func round_reset{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
-#     round_point.write(1)
-#     round_point_challenge_sent.write(0)
-#     round_point_caller.write(0)
-
-#     let (p1) = player1.read()    
-#     piles.write(p1,value=0)
-#     let (p2) = player2.read()    
-#     piles.write(p2,value=0)        
-#     head.write(0)
-#     return()
-# end
-
-# func check_game_status{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}()->(winner:felt):
-#     alloc_locals
-#     let (local p1) = player1.read()
-#     let (local p2) = player2.read()
-#     let (local p1_score) = scores.read(p1)
-#     let (local p2_score) = scores.read(p2)
-
-#     let (local p1_win) = is_le(WINNING_SCORE, p1_score)
-#     let (local p2_win) = is_le(WINNING_SCORE, p2_score)
-#     if p1_win == 1:    
-#         #player 1 won the game
-#         tempvar syscall_ptr = syscall_ptr
-#         tempvar pedersen_ptr = pedersen_ptr
-#         tempvar range_check_ptr = range_check_ptr
-#         assign_game_win_loss(p1)
-#         return(winner=p1)
-#     else:
-#         tempvar syscall_ptr = syscall_ptr
-#         tempvar pedersen_ptr = pedersen_ptr
-#         tempvar range_check_ptr = range_check_ptr        
-#     end
-
-#     if p2_win == 1:    
-#         #player 2 won the game
-#         tempvar syscall_ptr = syscall_ptr
-#         tempvar pedersen_ptr = pedersen_ptr
-#         tempvar range_check_ptr = range_check_ptr
-#         assign_game_win_loss(p2)
-#         return(winner=p2)
-#     else:
-#         tempvar syscall_ptr = syscall_ptr
-#         tempvar pedersen_ptr = pedersen_ptr
-#         tempvar range_check_ptr = range_check_ptr
-#     end
-#     return(winner=0)
-# end
-
-func assign_game_win_loss{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(player):
+func round_restart{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*}(round_win):
     #TO DO. Implement logic of what happens when game is over, and player wins
-
-    let (p1) = player1.read()   
-    let (p2) = player2.read()
+    alloc_locals
 
     round_point.write(1)
     round_point_challenge_sent.write(0)
-    round_point_caller.write(0)
-    
-    # challenge.write(1, value=NULL_CARD)
-    # challenge.write(2, value=NULL_CARD)
-    # challenge.write(3, value=NULL_CARD)
-    
-    card_idx.write(1, value=0)
-    card_idx.write(2, value=0)
-    card_idx.write(3, value=0)
-    
-    piles.write(p1,value=0)    
-    piles.write(p2,value=0)
+    round_point_caller.write(0)    
 
-    cards.write(p1,1, value=NULL_CARD)
-    cards.write(p1,2, value=NULL_CARD)
-    cards.write(p1,3, value=NULL_CARD)
-    cards.write(p2,1, value=NULL_CARD)
-    cards.write(p2,2, value=NULL_CARD)
-    cards.write(p2,3, value=NULL_CARD)
-    
-    # challenger.write(0)
-    # responder.write(0)
-    player1.write(0)
-    player2.write(0)
-    mover.write(0)
+    let (local m) = mover.read()   
+    let (local o) = get_other()
+
+    piles.write(m,value=0)    
+    piles.write(o,value=0)    
     head.write(0)
+    fisher_yates_shuffle()
+    
+    let (c1) = draw_next_card()    
+    let (c2) = draw_next_card()
+    let (c3) = draw_next_card()
+    let (c4) = draw_next_card()
+    let (c5) = draw_next_card()
+    let (c6) = draw_next_card()
 
-    trump.write(NULL_CARD)
+    if round_win == 1:        
+        cards.write(m, 1, c1)
+        cards.write(o, 1, c2)
+        cards.write(m, 2, c3)
+        cards.write(o, 2, c4)   
+        cards.write(m, 3, c5)    
+        cards.write(o, 3, c6)
+    else:
+        mover.write(o)
+        cards.write(o, 1, c1)
+        cards.write(m, 1, c2)
+        cards.write(o, 2, c3)
+        cards.write(m, 2, c4)   
+        cards.write(o, 3, c5)    
+        cards.write(m, 3, c6)
+    end
 
+    #randomly choose the the trump
+    let (s2) = seed2.read()
+    let (d2) = bitwise_and(s2, TWO_TO_128_MINUS_ONE)
+    let (_, trump_idx) = unsigned_div_rem(d2,36)
+    let (t) = deck.read(trump_idx)
+    let (div,_) = unsigned_div_rem(t,9)
+    trump.write(div)
     return()
 end
 
-#Challenger can claim the win at any time during the game. 
-# @external
-# func claim_win{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}()->(round_winner:felt, game_winner:felt):    
-#     let (caller) = get_caller_address()
-#     let (ch) = challenger.read()
-#     assert caller = ch 
-#     let (round_winner) = assign_round_win_loss_claimed()
-#     round_reset()
-#     let (game_winner) = check_game_status()
-#     return(round_winner=round_winner, game_winner=game_winner)
-# end
+#mover can claim the win at any time during the round. 
+@external
+func claim_win{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*}()->(round_win:felt, game_win:felt):    
+    alloc_locals
+    let (caller) = get_caller_address()
+    let (m) = mover.read()    
+    assert caller = m
 
-# func assign_round_win_loss_claimed{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}()->(winner:felt):
+    let (local pile) = piles.read(m)
+    let (local round_win) = is_le(31, pile)
+    let (local rpts) = round_point.read()
+    let (local score) = scores.read(m)
 
-#     alloc_locals
-#     let (local ch) = challenger.read()
-#     let (local rp) = responder.read() 
-#     let (local ch_pile) = piles.read(ch)
-#     let (local le) = is_le(31,ch_pile)
-#     let (local rpts) = round_point.read()
+    if round_win == 1:        
+        scores.write(m, score + rpts)
+    else:
+        scores.write(m, score - rpts)                
+    end
 
-#     if le == 1:
-#         #challenger is a winner
-#         let (score) = scores.read(ch)
-#         scores.write(ch, score + rpts)
-#         return(ch)
-#     else:                      
-#         #responder is a winner      
-#         let (score) = scores.read(rp)
-#         scores.write(rp, score + rpts)        
-#         return(rp)
-#     end    
-# end
+    let (local score2) = scores.read(m)
+    let (local game_win) = is_le(WINNING_SCORE, score2)
+
+    if game_win == 1:
+        return(round_win, game_win)
+    else:
+        round_restart(round_win)   
+        return(round_win, game_win)     
+    end
+end
 
 #Round point can be raised up to 6
 # @external
