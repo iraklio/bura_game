@@ -118,7 +118,7 @@ func player2()->(address:felt):
 end
 
 @storage_var
-func mover() -> (address : felt):
+func mover()->(address:felt):
 end
 
 @storage_var
@@ -227,9 +227,6 @@ func send_challenge1{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
     let (sender) = get_caller_address()
     let (ch) = mover.read()    
     assert sender = ch
-
-    let (cc) = cards.read(sender, idx)
-
     card_idx.write(1, idx)
     let (rp) = get_other()
     mover.write(rp)
@@ -342,10 +339,7 @@ func send_response1{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
         cards.write(rp, idx, next_card2)
         mover.write(ch)
         return(NULL_CARD)
-    end
-    #reset challenge
-    #challenge.write(1, NULL_CARD)
-    #return ()
+    end    
 end
 
 @external
@@ -369,9 +363,6 @@ func send_response2{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
     let (ch_card2) = cards.read(ch, other_idx2)
     let (rp_card1) = cards.read(rp, idx1)
     let (rp_card2) = cards.read(rp, idx2)
-
-    # assert_not_equal(rp_card1, NULL_CARD)
-    # assert_not_equal(rp_card2, NULL_CARD)
 
     let (tr_suit) = trump.read()
 
@@ -505,8 +496,7 @@ func send_response3{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
         let (next_card1) = draw_next_card()
         cards.write(rp, idx1, next_card1)            
         #draw 1st new card for challenger
-        let (other_next_card1) = draw_next_card()
-        
+        let (other_next_card1) = draw_next_card()        
         cards.write(ch, other_idx1, other_next_card1)
         #draw 2nd new card for responder
         let (next_card2) = draw_next_card()
@@ -518,12 +508,8 @@ func send_response3{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
         let (next_card3) = draw_next_card()
         cards.write(rp, idx3, next_card3)            
         #draw 3nd new card for challenger
-        let (other_next_card3) = draw_next_card()
-        
-        cards.write(ch, other_idx3, other_next_card3)
-        #swap responder and challenger
-        # challenger.write(rp)
-        # responder.write(ch)                
+        let (other_next_card3) = draw_next_card()        
+        cards.write(ch, other_idx3, other_next_card3)               
         return(rp_card1, rp_card2, rp_card3)        
     #challenger wins
     else:
