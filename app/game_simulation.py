@@ -37,7 +37,7 @@ class Account:
 
 async def get_cards(pp, account, contract):
     # assert that drawn cards are C8,HQ and CK HK
-    card11 = (
+    card1 = (
         await account.signer.send_transaction(
             account=account.contract,
             to=contract.contract_address,
@@ -45,7 +45,7 @@ async def get_cards(pp, account, contract):
             calldata=[1],
         )
     ).result[0][0]
-    card12 = (
+    card2 = (
         await account.signer.send_transaction(
             account=account.contract,
             to=contract.contract_address,
@@ -53,7 +53,7 @@ async def get_cards(pp, account, contract):
             calldata=[2],
         )
     ).result[0][0]
-    card13 = (
+    card3 = (
         await account.signer.send_transaction(
             account=account.contract,
             to=contract.contract_address,
@@ -64,13 +64,29 @@ async def get_cards(pp, account, contract):
 
     print(
         "Player " + pp + " cards:",
-        Card(card11).print(),
-        Card(card12).print(),
-        Card(card13).print(),
+        Card(card1).print(),
+        Card(card2).print(),
+        Card(card3).print(),
     )
 
+    return (card1, card2, card3)
 
-async def send_challenge(account, contract):
+
+async def claim_win(account, contract):
+
+    claim_win = input("Claim win:")
+    if claim_win.lower() == "y":
+        await account.signer.send_transaction(
+            account=account.contract,
+            to=contract.contract_address,
+            selector_name="claim_win",
+            calldata=[],
+        )
+        ch1 = (await contract.get_challenge(1).invoke()).result[0]
+        print("Challenge: ", Card(ch1).print())
+
+
+async def send_challenge(account, contract, cards):
     idxs = input("Enter card(s) to play: ")
     idxs = idxs.split(" ")
     if len(idxs) == 1:
@@ -80,8 +96,7 @@ async def send_challenge(account, contract):
             selector_name="send_challenge1",
             calldata=[int(idxs[0])],
         )
-        ch1 = (await contract.get_challenge(1).invoke()).result[0]
-        print("Challenge: ", Card(ch1).print())
+        print("Challenge: ", Card(cards[int(idxs[0]) - 1]).print())
 
     elif len(idxs) == 2:
         await account.signer.send_transaction(
@@ -90,9 +105,11 @@ async def send_challenge(account, contract):
             selector_name="send_challenge2",
             calldata=[int(idxs[0]), int(idxs[1])],
         )
-        ch1 = (await contract.get_challenge(1).invoke()).result[0]
-        ch2 = (await contract.get_challenge(2).invoke()).result[0]
-        print("Challenge: ", Card(ch1).print(), Card(ch2).print())
+        print(
+            "Challenge: ",
+            Card(cards[int(idxs[0]) - 1]).print(),
+            Card(cards[int(idxs[1]) - 1]).print(),
+        )
     else:
         await account.signer.send_transaction(
             account=account.contract,
@@ -100,10 +117,12 @@ async def send_challenge(account, contract):
             selector_name="send_challenge3",
             calldata=[int(idxs[0]), int(idxs[1]), int(idxs[2])],
         )
-        ch1 = (await contract.get_challenge(1).invoke()).result[0]
-        ch2 = (await contract.get_challenge(2).invoke()).result[0]
-        ch3 = (await contract.get_challenge(3).invoke()).result[0]
-        print("Challenge: ", Card(ch1).print(), Card(ch2).print(), Card(ch3).print())
+        print(
+            "Challenge: ",
+            Card(cards[int(idxs[0]) - 1]).print(),
+            Card(cards[int(idxs[1]) - 1]).print(),
+            Card(cards[int(idxs[2]) - 1]).print(),
+        )
 
 
 async def send_response(account, contract):
@@ -196,10 +215,11 @@ async def game_simulator():
     trump = (await contract.get_trump().invoke()).result[0]
     print("Trump suit:", Suit(trump).print())
 
-    for x in range(6):
-        challenger = (await contract.get_challenger().invoke()).result[0]
-        responder = (await contract.get_responder().invoke()).result[0]
+    for x in range(100):
+        challenger = (await contract.get_mover().invoke()).result[0]
+        responder = (await contract.get_other().invoke()).result[0]
 
+        print("--------------------------------------------")
         if challenger == address1:
             print("Challenger: Player 1")
             print("Responder:  Player 2")
@@ -208,17 +228,18 @@ async def game_simulator():
             print("Responder:  Player 1")
 
         if challenger == address1:
-            await get_cards("1", account1, contract)
-            await send_challenge(account1, contract)
+            cards = await get_cards("1", account1, contract)
+            # claim_win(account1, contract)
+            await send_challenge(account1, contract, cards)
         else:
-            await get_cards("2", account2, contract)
-            await send_challenge(account2, contract)
+            cards = await get_cards("2", account2, contract)
+            await send_challenge(account2, contract, cards)
 
         if responder == address1:
-            await get_cards("1", account1, contract)
+            cards = await get_cards("1", account1, contract)
             await send_response(account1, contract)
         else:
-            await get_cards("2", account2, contract)
+            cards = await get_cards("2", account2, contract)
             await send_response(account2, contract)
 
 
