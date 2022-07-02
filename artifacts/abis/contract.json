@@ -138,11 +138,47 @@
         "name": "claim_win",
         "outputs": [
             {
-                "name": "round_win",
+                "name": "round_win_loss",
                 "type": "felt"
             },
             {
-                "name": "game_win",
+                "name": "game_state",
+                "type": "felt"
+            }
+        ],
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "raise_point_challenge",
+        "outputs": [],
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "raise_point_decline",
+        "outputs": [
+            {
+                "name": "round_win_loss",
+                "type": "felt"
+            },
+            {
+                "name": "game_state",
+                "type": "felt"
+            }
+        ],
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "raise_point_accept",
+        "outputs": [
+            {
+                "name": "round_win_loss",
+                "type": "felt"
+            },
+            {
+                "name": "game_state",
                 "type": "felt"
             }
         ],
@@ -178,16 +214,15 @@
         "type": "function"
     },
     {
-        "inputs": [
-            {
-                "name": "p",
-                "type": "felt"
-            }
-        ],
-        "name": "get_score",
+        "inputs": [],
+        "name": "get_scores",
         "outputs": [
             {
-                "name": "res",
+                "name": "s1",
+                "type": "felt"
+            },
+            {
+                "name": "s2",
                 "type": "felt"
             }
         ],

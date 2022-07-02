@@ -23,7 +23,8 @@ from starkware.cairo.common.math import (
     )
 
 
-const WINNING_SCORE = 11
+const W_BOUND = 32
+const L_BOUND = 10
 const NULL_CARD = 99
 const TWO_TO_128_MINUS_ONE = 340282366920938463463374607431768211455 #2^128-1 
 const C6 = 0
@@ -183,6 +184,9 @@ func start_game{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
     let (local p1) = player1.read()
     let (local p2) = player2.read()
 
+    scores.write(p1, 21)
+    scores.write(p2, 21)
+
     fisher_yates_shuffle()
     
     let (c1) = draw_next_card()    
@@ -198,6 +202,8 @@ func start_game{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
     cards.write(p2, 2, c4)   
     cards.write(p1, 3, c5)    
     cards.write(p2, 3, c6)
+
+    round_point.write(1)
 
     #randomly choose the challenger
     let (s1) = seed1.read()
@@ -224,6 +230,11 @@ end
 func send_challenge1{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(idx:felt) -> ():
 
     assert (idx-1)*(idx-2)*(idx-3) = 0
+
+    #make sure that round point challenge is not pending
+    let (rpcs) = round_point_challenge_sent.read()
+    assert rpcs = 0
+
     let (sender) = get_caller_address()
     let (ch) = mover.read()    
     assert sender = ch
@@ -238,6 +249,10 @@ func send_challenge2{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
 
     assert (idx1-1)*(idx1-2)*(idx1-3) = 0
     assert (idx2-1)*(idx2-2)*(idx2-3) = 0
+    #make sure that round point challenge is not pending
+    let (rpcs) = round_point_challenge_sent.read()
+    assert rpcs = 0
+
     assert_not_equal(idx1, idx2)
 
     let (sender) = get_caller_address()
@@ -265,6 +280,10 @@ func send_challenge3{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
     assert (idx1-1)*(idx1-2)*(idx1-3) = 0
     assert (idx2-1)*(idx2-2)*(idx2-3) = 0
     assert (idx3-1)*(idx3-2)*(idx3-3) = 0
+    
+    #make sure that round point challenge is not pending
+    let (rpcs) = round_point_challenge_sent.read()
+    assert rpcs = 0
 
     assert_not_equal(idx1, idx2)
     assert_not_equal(idx2, idx3)
@@ -299,6 +318,11 @@ func send_response1{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
     alloc_locals
 
     assert (idx-1)*(idx-2)*(idx-3) = 0
+
+    #make sure that round point challenge is not pending
+    let (rpcs) = round_point_challenge_sent.read()
+    assert rpcs = 0
+
     #make sure response was sent by the responder
     let (sender) = get_caller_address()
     let (rp) = mover.read()
@@ -348,6 +372,11 @@ func send_response2{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
 
     assert (idx1-1)*(idx1-2)*(idx1-3) = 0
     assert (idx2-1)*(idx2-2)*(idx2-3) = 0
+
+    #make sure that round point challenge is not pending
+    let (rpcs) = round_point_challenge_sent.read()
+    assert rpcs = 0
+
     assert_not_equal(idx1, idx2)
 
     #make sure response was sent by the responder
@@ -430,6 +459,11 @@ func send_response3{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
     assert (idx1-1)*(idx1-2)*(idx1-3) = 0
     assert (idx2-1)*(idx2-2)*(idx2-3) = 0
     assert (idx3-1)*(idx3-2)*(idx3-3) = 0
+
+    #make sure that round point challenge is not pending
+    let (rpcs) = round_point_challenge_sent.read()
+    assert rpcs = 0
+
     assert_not_equal(idx1, idx2)
     assert_not_equal(idx2, idx3)
     assert_not_equal(idx1, idx3)
@@ -597,67 +631,103 @@ end
 
 #mover can claim the win at any time during the round. 
 @external
-func claim_win{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*}()->(round_win:felt, game_win:felt):    
+func claim_win{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*}()->(round_win_loss:felt, game_state:felt):    
     alloc_locals
     let (caller) = get_caller_address()
-    let (m) = mover.read()    
+    let (m) = mover.read()
+    let (o) = get_other()
+
     assert caller = m
 
     let (local pile) = piles.read(m)
-    let (local round_win) = is_le(31, pile)
+    let (local round_won) = is_le(31, pile)
     let (local rpts) = round_point.read()
     let (local score) = scores.read(m)
 
-    if round_win == 1:        
-        scores.write(m, score + rpts)
+    if round_won == 1:        
+        scores.write(m, score + rpts)        
     else:
-        scores.write(m, score - rpts)                
+        scores.write(m, score - rpts )                
     end
 
     let (local score2) = scores.read(m)
-    let (local game_win) = is_le(WINNING_SCORE, score2)
-
-    if game_win == 1:
-        return(round_win, game_win)
+    let (local game_not_over) = is_in_range(score2, L_BOUND + 1, W_BOUND)
+    
+    if game_not_over == 1:
+        round_restart(round_won)
+        return(round_win_loss=round_won, game_state=2)             
     else:
-        round_restart(round_win)   
-        return(round_win, game_win)     
+        game_over(round_won, m)
+        return(round_win_loss=round_won, game_state=round_won)        
     end
 end
 
+
+func game_over{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*}(win_loss, player):
+    #TO DO. Implement logic of what happens when game is over, and player wins
+    alloc_locals
+    player1.write(0)
+    player2.write(0)
+    return()
+end
+
 #Round point can be raised up to 6
-# @external
-# func raise_round_point_challenge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
-#     let (sender) = get_caller_address()
-#     let (previous_caller) = round_point_caller.read()
-#     assert_not_equal(sender, previous_caller)
-#     let (previous_round_point) = round_point.read()
-#     assert_lt(previous_round_point,6)
-#     round_point_caller.write(sender)
-#     round_point_challenge_sent.write(1)
-#     return()
-# end
-
-# @external
-# func raise_round_point_responce{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(resp):
-
-#     assert resp*(resp-1) = 0
-#     let (caller) = get_caller_address()
-#     let (previous_caller) = round_point_caller.read()   
-#     assert_not_equal(caller, previous_caller)
-#     let (previous_round_point) = round_point.read()
-
-#     if resp == 1:
-#         round_point.write(previous_round_point + 1)
-#         round_point_challenge_sent.write(0)
-#     else:
-#         #Responder does not accept the raise. Round is over.
-#         assign_round_win_loss_raise_not_accepted(previous_caller)
-#     end   
+@external
+func raise_point_challenge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
     
-#     return()
-# end
+    let (caller) = get_caller_address()
+    let (m) = mover.read()
+    assert caller = m
 
+    let (previous_caller) = round_point_caller.read()
+    assert_not_equal(caller, previous_caller)
+
+    let (rp) = round_point.read()
+    assert_lt(rp,6)
+    round_point_caller.write(caller)
+    round_point_challenge_sent.write(1)
+    return()
+end
+
+# Responses are: 0 - Not accepted, 1 - Accepted, 2 - Accepted with Raise
+
+@external
+func raise_point_decline{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*}()->(round_win_loss:felt, game_state:felt):
+    alloc_locals    
+    let (caller) = get_caller_address()
+    let (m) = mover.read()
+    let (o) = get_other()
+    assert caller = o    
+    let (rp) = round_point.read()
+    #Responder does not accept the raise. Round is over.
+    let (score) = scores.read(m)
+    scores.write(m, score + rp)    
+    
+    let (local score2) = scores.read(m)
+    let (local game_not_over) = is_in_range(score2, L_BOUND + 1, W_BOUND)
+    
+    if game_not_over == 1:
+        round_restart(1)
+        return(round_win_loss=1, game_state=2)             
+    else:
+        game_over(1, m)
+        return(round_win_loss=1, game_state=1)        
+    end
+end
+
+@external
+func raise_point_accept{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*}()->(round_win_loss:felt, game_state:felt):
+
+    alloc_locals    
+    let (caller) = get_caller_address()    
+    let (o) = get_other()
+    assert caller = o    
+    let (rp) = round_point.read()
+    round_point.write(rp + 1)
+    #reset the flag so game can go on
+    round_point_challenge_sent.write(0)
+    return(round_win_loss=2, game_state=2)
+end
 
 @view
 func get_trump{syscall_ptr:felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (res: felt):
@@ -672,9 +742,12 @@ func get_pile{syscall_ptr:felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(p
 end
 
 @view
-func get_score{syscall_ptr:felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(p:felt)->(res:felt):
-    let (s) = scores.read(p)
-    return (s)
+func get_scores{syscall_ptr:felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}()->(s1:felt, s2:felt):
+    let (p1) = player1.read()
+    let (p2) = player2.read()
+    let (s1) = scores.read(p1)
+    let (s2) = scores.read(p2)
+    return(s1,s2)
 end
 
 @view
@@ -837,7 +910,7 @@ end
 
 @constructor
 func constructor{syscall_ptr:felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
-    
+
     win_loss.write(1,1,1,value=0)
     win_loss.write(1,0,1,value=1)    
     win_loss.write(1,1,0,value=0)

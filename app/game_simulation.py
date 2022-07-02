@@ -72,18 +72,95 @@ async def get_cards(pp, account, contract):
     return (card1, card2, card3)
 
 
-async def claim_win(account, contract):
-
-    claim_win = input("Claim win:")
-    if claim_win.lower() == "y":
+async def raise_point_challenge(pp, account, contract):
+    raise_point = input("Raise Point? ")
+    if raise_point.lower() == "y":
         await account.signer.send_transaction(
             account=account.contract,
             to=contract.contract_address,
-            selector_name="claim_win",
+            selector_name="raise_point_challenge",
             calldata=[],
         )
-        ch1 = (await contract.get_challenge(1).invoke()).result[0]
-        print("Challenge: ", Card(ch1).print())
+        print("Player " + pp + " offered point raise.")
+        return True
+    else:
+        return False
+
+
+async def raise_point_response(pp, account, contract):
+    raise_point = input("Accept the Raise Point? ")
+    if raise_point.lower() == "y":
+        print("Player " + pp + " accepts point raise.")
+        status = (
+            await account.signer.send_transaction(
+                account=account.contract,
+                to=contract.contract_address,
+                selector_name="raise_point_accept",
+                calldata=[],
+            )
+        ).result[0]
+        (round_win, game_state) = (status[0], status[1])
+        return (round_win, game_state)
+    else:
+        print("Player " + pp + " declines point raise.")
+        status = (
+            await account.signer.send_transaction(
+                account=account.contract,
+                to=contract.contract_address,
+                selector_name="raise_point_decline",
+                calldata=[],
+            )
+        ).result[0]
+        (round_win, game_state) = (status[0], status[1])
+
+        print("Player " + pp + " lost the round")
+        scores = (await contract.get_scores().invoke()).result
+        print(
+            "Game score: Player 1: "
+            + str(scores[0] - 21)
+            + ". Player 2: "
+            + str(scores[1] - 21)
+        )
+        print("Starting a new round... ")
+        trump = (await contract.get_trump().invoke()).result[0]
+        print("Trump suit:", Suit(trump).print())
+        return (round_win, game_state)
+
+
+async def claim_win(pp, account, contract):
+
+    claim_win = input("Claim Win? ")
+    if claim_win.lower() == "y":
+        status = (
+            await account.signer.send_transaction(
+                account=account.contract,
+                to=contract.contract_address,
+                selector_name="claim_win",
+                calldata=[],
+            )
+        ).result[0]
+        (round_win, game_state) = (status[0], status[1])
+
+        if round_win == 1:
+            print("Player " + pp + " claimed and won")
+        else:
+            print("Player " + pp + " claimed and lost")
+
+        scores = (await contract.get_scores().invoke()).result
+
+        print(
+            "Game score: Player 1: "
+            + str(scores[0] - 21)
+            + ". Player 2: "
+            + str(scores[1] - 21)
+        )
+        print("Starting a new round... ")
+        trump = (await contract.get_trump().invoke()).result[0]
+        print("Trump suit:", Suit(trump).print())
+
+        return (round_win, game_state)
+    else:
+        return (2, 2)
 
 
 async def send_challenge(account, contract, cards):
@@ -192,15 +269,51 @@ async def contract_factory() -> Tuple[Starknet, Account, Account, StarknetContra
     return starknet, account1, account2, contract
 
 
+async def make_a_move(type, mname, mcontract, oname, ocontract, game_contract):
+    cards = await get_cards(mname, mcontract, game_contract)
+    (round_state, game_state) = await claim_win(mname, mcontract, game_contract)
+    if round_state != 2:
+        if game_state == 0:
+            print("Game Over: Player " + oname + " won")
+            return 0
+        elif game_state == 1:
+            print("Game Over: Player " + mname + " won")
+            return 0
+        else:
+            return 1
+    elif await raise_point_challenge(mname, mcontract, game_contract):
+        round_state, game_state = await raise_point_response(
+            oname, ocontract, game_contract
+        )
+        if round_state != 2:
+            if game_state == 1:
+                print("Game Over: Player " + mname + " won")
+                return 0
+            else:
+                return 1
+        else:
+            if type == "C":
+                await send_challenge(mcontract, game_contract, cards)
+            else:
+                await send_response(mcontract, game_contract)
+    else:
+        if type == "C":
+            await send_challenge(mcontract, game_contract, cards)
+        else:
+            await send_response(mcontract, game_contract)
+
+    return 2
+
+
 async def game_simulator():
 
-    starknet, account1, account2, contract = await contract_factory()
+    starknet, account1, account2, bura_game = await contract_factory()
 
     player1 = account1.contract
     player2 = account2.contract
     address1 = account1.contract.contract_address
     address2 = account2.contract.contract_address
-    game = contract.contract_address
+    game = bura_game.contract_address
 
     print("player 1 joined from: ", address1)
     await account1.signer.send_transaction(
@@ -212,38 +325,36 @@ async def game_simulator():
         account=player2, to=game, selector_name="join_game", calldata=[5]
     )
 
-    trump = (await contract.get_trump().invoke()).result[0]
+    trump = (await bura_game.get_trump().invoke()).result[0]
     print("Trump suit:", Suit(trump).print())
 
+    pmap = {}
+    pmap[address1] = (account1, "1")
+    pmap[address2] = (account2, "2")
+
     for x in range(100):
-        challenger = (await contract.get_mover().invoke()).result[0]
-        responder = (await contract.get_other().invoke()).result[0]
 
+        challenger = (await bura_game.get_mover().invoke()).result[0]
+        responder = (await bura_game.get_other().invoke()).result[0]
+
+        (mcontract, mname) = pmap[challenger]
+        (ocontract, oname) = pmap[responder]
         print("--------------------------------------------")
-        if challenger == address1:
-            print("Challenger: Player 1")
-            print("Responder:  Player 2")
-        else:
-            print("Challenger: Player 2")
-            print("Responder:  Player 1")
 
-        if challenger == address1:
-            cards = await get_cards("1", account1, contract)
-            claim_win(account1, contract)
-            await send_challenge(account1, contract, cards)
-        else:
-            cards = await get_cards("2", account2, contract)
-            claim_win(account2, contract)
-            await send_challenge(account2, contract, cards)
+        print("Mover: Player " + mname)
+        print("Other: Player " + oname)
 
-        if responder == address1:
-            cards = await get_cards("1", account1, contract)
-            claim_win(account1, contract)
-            await send_response(account1, contract)
-        else:
-            cards = await get_cards("2", account2, contract)
-            claim_win(account2, contract)
-            await send_response(account2, contract)
+        status = await make_a_move("C", mname, mcontract, oname, ocontract, bura_game)
+        if status == 0:
+            break
+        elif status == 1:
+            continue
+
+        status = await make_a_move("R", oname, ocontract, mname, mcontract, bura_game)
+        if status == 0:
+            break
+        elif status == 1:
+            continue
 
 
 loop = asyncio.get_event_loop()
