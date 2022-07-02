@@ -138,7 +138,7 @@
         "name": "claim_win",
         "outputs": [
             {
-                "name": "round_win_loss",
+                "name": "round_state",
                 "type": "felt"
             },
             {
@@ -159,7 +159,7 @@
         "name": "raise_point_decline",
         "outputs": [
             {
-                "name": "round_win_loss",
+                "name": "round_state",
                 "type": "felt"
             },
             {
@@ -174,7 +174,7 @@
         "name": "raise_point_accept",
         "outputs": [
             {
-                "name": "round_win_loss",
+                "name": "round_state",
                 "type": "felt"
             },
             {

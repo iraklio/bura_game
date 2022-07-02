@@ -22,6 +22,16 @@ from starkware.cairo.common.math import (
     sqrt
     )
 
+#Game states from MOVER's point of view
+const GAME_STATE_LOST = 0
+const GAME_STATE_WON  = 1
+const GAME_STATE_LIVE = 2
+
+#Round states from MOVER's point of view
+const ROUND_STATE_LOST = 0
+const ROUND_STATE_WON = 1
+const ROUND_STATE_LIVE = 2
+
 
 const W_BOUND = 32
 const L_BOUND = 10
@@ -631,7 +641,7 @@ end
 
 #mover can claim the win at any time during the round. 
 @external
-func claim_win{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*}()->(round_win_loss:felt, game_state:felt):    
+func claim_win{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*}()->(round_state:felt, game_state:felt):    
     alloc_locals
     let (caller) = get_caller_address()
     let (m) = mover.read()
@@ -655,15 +665,15 @@ func claim_win{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
     
     if game_not_over == 1:
         round_restart(round_won)
-        return(round_win_loss=round_won, game_state=2)             
+        return(round_state=round_won, game_state=GAME_STATE_LIVE)             
     else:
-        game_over(round_won, m)
-        return(round_win_loss=round_won, game_state=round_won)        
+        game_over(round_won)
+        return(round_state=round_won, game_state=round_won)        
     end
 end
 
 
-func game_over{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*}(win_loss, player):
+func game_over{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*}(win_loss):
     #TO DO. Implement logic of what happens when game is over, and player wins
     alloc_locals
     player1.write(0)
@@ -689,10 +699,8 @@ func raise_point_challenge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, ran
     return()
 end
 
-# Responses are: 0 - Not accepted, 1 - Accepted, 2 - Accepted with Raise
-
 @external
-func raise_point_decline{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*}()->(round_win_loss:felt, game_state:felt):
+func raise_point_decline{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*}()->(round_state:felt, game_state:felt):
     alloc_locals    
     let (caller) = get_caller_address()
     let (m) = mover.read()
@@ -707,16 +715,16 @@ func raise_point_decline{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range
     let (local game_not_over) = is_in_range(score2, L_BOUND + 1, W_BOUND)
     
     if game_not_over == 1:
-        round_restart(1)
-        return(round_win_loss=1, game_state=2)             
+        round_restart(ROUND_STATE_WON)
+        return(round_state=ROUND_STATE_WON, game_state=GAME_STATE_LIVE)             
     else:
-        game_over(1, m)
-        return(round_win_loss=1, game_state=1)        
+        game_over(ROUND_STATE_WON)
+        return(round_state=ROUND_STATE_WON, game_state=GAME_STATE_WON)        
     end
 end
 
 @external
-func raise_point_accept{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*}()->(round_win_loss:felt, game_state:felt):
+func raise_point_accept{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*}()->(round_state:felt, game_state:felt):
 
     alloc_locals    
     let (caller) = get_caller_address()    
@@ -726,7 +734,7 @@ func raise_point_accept{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_
     round_point.write(rp + 1)
     #reset the flag so game can go on
     round_point_challenge_sent.write(0)
-    return(round_win_loss=2, game_state=2)
+    return(round_state=ROUND_STATE_LIVE, game_state=GAME_STATE_LIVE)
 end
 
 @view
