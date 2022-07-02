@@ -37,39 +37,25 @@ class Account:
 
 async def get_cards(pp, account, contract):
     # assert that drawn cards are C8,HQ and CK HK
-    card1 = (
+    cards = (
         await account.signer.send_transaction(
             account=account.contract,
             to=contract.contract_address,
-            selector_name="get_card",
-            calldata=[1],
+            selector_name="get_cards",
+            calldata=[],
         )
-    ).result[0][0]
-    card2 = (
-        await account.signer.send_transaction(
-            account=account.contract,
-            to=contract.contract_address,
-            selector_name="get_card",
-            calldata=[2],
-        )
-    ).result[0][0]
-    card3 = (
-        await account.signer.send_transaction(
-            account=account.contract,
-            to=contract.contract_address,
-            selector_name="get_card",
-            calldata=[3],
-        )
-    ).result[0][0]
+    ).result[0]
+
+    (c1, c2, c3) = cards  # (cards[0], cards[1], cards[2])
 
     print(
         "Player " + pp + " cards:",
-        Card(card1).print(),
-        Card(card2).print(),
-        Card(card3).print(),
+        Card(c1).print(),
+        Card(c2).print(),
+        Card(c3).print(),
     )
 
-    return (card1, card2, card3)
+    return (c1, c2, c3)
 
 
 async def raise_point_challenge(pp, account, contract):
@@ -99,8 +85,8 @@ async def raise_point_response(pp, account, contract):
                 calldata=[],
             )
         ).result[0]
-        (round_win, game_state) = (status[0], status[1])
-        return (round_win, game_state)
+        (round_state, game_state) = (status[0], status[1])
+        return (round_state, game_state)
     else:
         print("Player " + pp + " declines point raise.")
         status = (
@@ -111,7 +97,7 @@ async def raise_point_response(pp, account, contract):
                 calldata=[],
             )
         ).result[0]
-        (round_win, game_state) = (status[0], status[1])
+        (round_state, game_state) = (status[0], status[1])
 
         print("Player " + pp + " lost the round")
         scores = (await contract.get_scores().invoke()).result
@@ -124,7 +110,7 @@ async def raise_point_response(pp, account, contract):
         print("Starting a new round... ")
         trump = (await contract.get_trump().invoke()).result[0]
         print("Trump suit:", Suit(trump).print())
-        return (round_win, game_state)
+        return (round_state, game_state)
 
 
 async def claim_win(pp, account, contract):
@@ -139,9 +125,9 @@ async def claim_win(pp, account, contract):
                 calldata=[],
             )
         ).result[0]
-        (round_win, game_state) = (status[0], status[1])
+        (round_state, game_state) = (status[0], status[1])
 
-        if round_win == 1:
+        if round_state == 1:
             print("Player " + pp + " claimed and won")
         else:
             print("Player " + pp + " claimed and lost")
@@ -158,7 +144,7 @@ async def claim_win(pp, account, contract):
         trump = (await contract.get_trump().invoke()).result[0]
         print("Trump suit:", Suit(trump).print())
 
-        return (round_win, game_state)
+        return (round_state, game_state)
     else:
         return (2, 2)
 

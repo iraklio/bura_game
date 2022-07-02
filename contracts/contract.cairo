@@ -103,9 +103,9 @@ end
 func cards(player:felt, idx:felt)->(c:felt):
 end
 
-# @storage_var
-# func challenge(idx:felt)->(c:felt):
-# end
+@storage_var
+func challenge_type()->(c:felt):
+end
 
 @storage_var
 func card_idx(idx:felt)->(c:felt):
@@ -251,6 +251,7 @@ func send_challenge1{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
     card_idx.write(1, idx)
     let (rp) = get_other()
     mover.write(rp)
+    challenge_type.write(1)
     return()
 end
 
@@ -281,6 +282,7 @@ func send_challenge2{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
 
     let (rp) = get_other()
     mover.write(rp)
+    challenge_type.write(2)
     return()
 end
 
@@ -320,14 +322,18 @@ func send_challenge3{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
     
     let (rp) = get_other()
     mover.write(rp)
+    challenge_type.write(3)
     return()
 end
 
 @external
 func send_response1{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*}(idx)->(c1:felt):
     alloc_locals
-
     assert (idx-1)*(idx-2)*(idx-3) = 0
+
+    let (ctype) = challenge_type.read()
+    assert ctype = 1
+    challenge_type.write(0)
 
     #make sure that round point challenge is not pending
     let (rpcs) = round_point_challenge_sent.read()
@@ -382,6 +388,10 @@ func send_response2{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
 
     assert (idx1-1)*(idx1-2)*(idx1-3) = 0
     assert (idx2-1)*(idx2-2)*(idx2-3) = 0
+
+    let (ctype) = challenge_type.read()
+    assert ctype = 2
+    challenge_type.write(0)
 
     #make sure that round point challenge is not pending
     let (rpcs) = round_point_challenge_sent.read()
@@ -469,6 +479,10 @@ func send_response3{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
     assert (idx1-1)*(idx1-2)*(idx1-3) = 0
     assert (idx2-1)*(idx2-2)*(idx2-3) = 0
     assert (idx3-1)*(idx3-2)*(idx3-3) = 0
+
+    let (ctype) = challenge_type.read()
+    assert ctype = 3
+    challenge_type.write(0)
 
     #make sure that round point challenge is not pending
     let (rpcs) = round_point_challenge_sent.read()
@@ -743,7 +757,6 @@ func get_trump{syscall_ptr:felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     return (t)
 end
 
-@view
 func get_pile{syscall_ptr:felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(p:felt)->(res:felt):
     let (s) = piles.read(p)
     return (s)
@@ -909,11 +922,12 @@ func swap_cards{ syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
 end
 
 @view
-func get_card{syscall_ptr:felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(idx) -> (res: felt):
-    assert (idx-1)*(idx-2)*(idx-3) = 0    
+func get_cards{syscall_ptr:felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (c1:felt, c2:felt, c3:felt):    
     let (sender) = get_caller_address()    
-    let (res) = cards.read(sender, idx)
-    return(res)
+    let (c1) = cards.read(sender, 1)
+    let (c2) = cards.read(sender, 2)
+    let (c3) = cards.read(sender, 3)
+    return(c1,c2,c3)
 end
 
 @constructor

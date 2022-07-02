@@ -197,23 +197,6 @@
         "type": "function"
     },
     {
-        "inputs": [
-            {
-                "name": "p",
-                "type": "felt"
-            }
-        ],
-        "name": "get_pile",
-        "outputs": [
-            {
-                "name": "res",
-                "type": "felt"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
         "inputs": [],
         "name": "get_scores",
         "outputs": [
@@ -326,16 +309,19 @@
         "type": "function"
     },
     {
-        "inputs": [
-            {
-                "name": "idx",
-                "type": "felt"
-            }
-        ],
-        "name": "get_card",
+        "inputs": [],
+        "name": "get_cards",
         "outputs": [
             {
-                "name": "res",
+                "name": "c1",
+                "type": "felt"
+            },
+            {
+                "name": "c2",
+                "type": "felt"
+            },
+            {
+                "name": "c3",
                 "type": "felt"
             }
         ],
