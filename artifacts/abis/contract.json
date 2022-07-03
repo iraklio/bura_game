@@ -327,11 +327,5 @@
         ],
         "stateMutability": "view",
         "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "constructor",
-        "outputs": [],
-        "type": "constructor"
     }
 ]

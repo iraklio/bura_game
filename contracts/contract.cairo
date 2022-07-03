@@ -3,6 +3,7 @@
 
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.cairo.common.cairo_builtins import BitwiseBuiltin
+from starkware.cairo.common.registers import get_label_location
 
 from starkware.cairo.common.bitwise import bitwise_and
 from starkware.starknet.common.syscalls import get_caller_address
@@ -22,6 +23,10 @@ from starkware.cairo.common.math import (
     sqrt
     )
 
+
+from contracts.helper_fns import points_lookup, max, win_loss_calc
+from contracts.card_deck import initial_deck
+
 #Game states from MOVER's point of view
 const GAME_STATE_LOST = 0
 const GAME_STATE_WON  = 1
@@ -37,47 +42,6 @@ const W_BOUND = 32
 const L_BOUND = 10
 const NULL_CARD = 99
 const TWO_TO_128_MINUS_ONE = 340282366920938463463374607431768211455 #2^128-1 
-const C6 = 0
-const C7 = 1
-const C8 = 2
-const C9 = 3
-const C10 = 4
-const CJ = 5
-const CQ = 6
-const CK = 7
-const CA = 8
-const D6 = 9
-const D7 = 10
-const D8 = 11
-const D9 = 12
-const D10 = 13
-const DJ = 14
-const DQ = 15
-const DK = 16
-const DA = 17
-const H6 = 18
-const H7 = 19
-const H8 = 20
-const H9 = 21
-const H10 = 22
-const HJ = 23
-const HQ = 24
-const HK = 25
-const HA = 26
-const S6 = 27
-const S7 = 28
-const S8 = 29
-const S9 = 30
-const S10 = 31
-const SJ = 32
-const SQ = 33
-const SK = 34
-const SA = 35
-
-
-@storage_var
-func win_loss(s,r,t) -> (res : felt):
-end
 
 @storage_var
 func bet() -> (res : felt):
@@ -141,11 +105,6 @@ func deck(idx: felt) -> (card:felt):
 end
 
 @storage_var
-func points(idx: felt) -> (card:felt):
-end
-
-
-@storage_var
 func seed1() -> (seed:felt):
 end
 
@@ -197,6 +156,8 @@ func start_game{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
     scores.write(p1, 21)
     scores.write(p2, 21)
 
+    initialize_deck(0)
+
     fisher_yates_shuffle()
     
     let (c1) = draw_next_card()    
@@ -213,7 +174,7 @@ func start_game{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
     cards.write(p1, 3, c5)    
     cards.write(p2, 3, c6)
 
-    round_point.write(1)
+    round_point.write(1)    
 
     #randomly choose the challenger
     let (s1) = seed1.read()
@@ -235,6 +196,19 @@ func start_game{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
 
     return()
 end
+
+
+func initialize_deck{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(idx) -> ():
+
+    if idx == 36:
+        return()
+    end
+    let (card) = initial_deck(idx)
+    deck.write(idx, card)
+    initialize_deck(idx + 1)
+    return()
+end
+
 
 @external
 func send_challenge1{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(idx:felt) -> ():
@@ -352,7 +326,9 @@ func send_response1{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
     let (_, ch_rank) = unsigned_div_rem(ch_card, 9)    
     let (_, rp_rank) = unsigned_div_rem(rp_card, 9)
 
-    let (wl) = win_loss_calc(ch_card, rp_card)
+    let (tr_suit) = trump.read()
+
+    let (wl) = win_loss_calc(ch_card, rp_card, tr_suit)
 
     #responder wins
     if wl == 1:
@@ -421,11 +397,11 @@ func send_response2{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
     let ( _, rp_rank1) = unsigned_div_rem(rp_card1, 9)
     let ( _, rp_rank2) = unsigned_div_rem(rp_card2, 9)
 
-    let (wl11) = win_loss_calc(ch_card1, rp_card1)
-    let (wl22) = win_loss_calc(ch_card2, rp_card2)
+    let (wl11) = win_loss_calc(ch_card1, rp_card1, tr_suit)
+    let (wl22) = win_loss_calc(ch_card2, rp_card2, tr_suit)
 
-    let (wl12) = win_loss_calc(ch_card1, rp_card2)
-    let (wl21) = win_loss_calc(ch_card2, rp_card1)    
+    let (wl12) = win_loss_calc(ch_card1, rp_card2, tr_suit)
+    let (wl21) = win_loss_calc(ch_card2, rp_card1, tr_suit)    
     let (wl) = max(wl11 + wl22, wl12 + wl21)
 
     #responder wins
@@ -522,15 +498,15 @@ func send_response3{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
     # 1,2,3 # 1,3,2
     # 2,1,3 # 2,3,1
     # 3,1,2 # 3,2,1
-    let (wl11) = win_loss_calc(ch_card1, rp_card1)
-    let (wl22) = win_loss_calc(ch_card2, rp_card2)
-    let (wl33) = win_loss_calc(ch_card3, rp_card3)    
-    let (wl23) = win_loss_calc(ch_card2, rp_card3)
-    let (wl32) = win_loss_calc(ch_card3, rp_card2)    
-    let (wl12) = win_loss_calc(ch_card1, rp_card2)
-    let (wl21) = win_loss_calc(ch_card2, rp_card1)           
-    let (wl31) = win_loss_calc(ch_card3, rp_card1)
-    let (wl13) = win_loss_calc(ch_card1, rp_card3)    
+    let (wl11) = win_loss_calc(ch_card1, rp_card1, tr_suit)
+    let (wl22) = win_loss_calc(ch_card2, rp_card2, tr_suit)
+    let (wl33) = win_loss_calc(ch_card3, rp_card3, tr_suit)    
+    let (wl23) = win_loss_calc(ch_card2, rp_card3, tr_suit)
+    let (wl32) = win_loss_calc(ch_card3, rp_card2, tr_suit)    
+    let (wl12) = win_loss_calc(ch_card1, rp_card2, tr_suit)
+    let (wl21) = win_loss_calc(ch_card2, rp_card1, tr_suit)           
+    let (wl31) = win_loss_calc(ch_card3, rp_card1, tr_suit)
+    let (wl13) = win_loss_calc(ch_card1, rp_card3, tr_suit)    
 
     let (wl_1) = max(wl11 + wl22 + wl33, wl11 + wl23 + wl32)
     let (wl_2) = max(wl12 + wl21 + wl33, wl12 + wl23 + wl31)
@@ -849,33 +825,11 @@ func draw_next_card{syscall_ptr:felt*, pedersen_ptr : HashBuiltin*, range_check_
 end
 
 func update_pile{syscall_ptr:felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(player, rank):
-    let (res) = piles.read(player)    
-    let (pts) = points.read(rank)
+    alloc_locals
+    let (local res) = piles.read(player)        
+    let (local pts) = points_lookup(rank)
     piles.write(player, res + pts)
     return()
-end
-
-func win_loss_calc{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(ch_card,rp_card) -> (wl:felt):
-    alloc_locals
-    let (ch_suit, ch_rank) = unsigned_div_rem(ch_card, 9)    
-    let (rp_suit, rp_rank) = unsigned_div_rem(rp_card, 9)
-    let (tr_suit) =  trump.read()
-
-    let (local s) = is_not_zero(rp_suit - ch_suit)
-    let (local t) = is_not_zero(rp_suit - tr_suit)
-    let (local r) = is_le(ch_rank, rp_rank)
-
-    let (wl) = win_loss.read(s,t,r)
-    return(wl=wl)
-end
-
-func max{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(a,b) -> (res:felt):    
-    let (r) = is_le(a, b)
-    if r==1:
-        return(b)
-    else:
-        return(a)
-    end
 end
 
 func fisher_yates_shuffle{ syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*}():
@@ -928,69 +882,5 @@ func get_cards{syscall_ptr:felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     let (c2) = cards.read(sender, 2)
     let (c3) = cards.read(sender, 3)
     return(c1,c2,c3)
-end
-
-@constructor
-func constructor{syscall_ptr:felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
-
-    win_loss.write(1,1,1,value=0)
-    win_loss.write(1,0,1,value=1)    
-    win_loss.write(1,1,0,value=0)
-    win_loss.write(1,0,0,value=1)    
-    win_loss.write(0,1,1,value=1)
-    win_loss.write(0,0,1,value=1)    
-    win_loss.write(0,1,0,value=0)
-    win_loss.write(0,0,0,value=0)
-
-    deck.write(0,value=C6)
-    deck.write(1,value=H10)
-    deck.write(2,value=CA)
-    deck.write(3,value=SQ)
-    deck.write(4,value=D7)
-    deck.write(5,value=CJ)
-    deck.write(6,value=CK)
-    deck.write(7,value=C8)
-    deck.write(8,value=HK)
-    deck.write(9,value=HQ)
-    deck.write(10,value=S9)
-    deck.write(11,value=S8)
-    deck.write(12,value=SK)
-    deck.write(13,value=D9)
-    deck.write(14,value=SA)
-    deck.write(15,value=H7)
-    deck.write(16,value=C9)
-    deck.write(17,value=D10)
-    deck.write(18,value=S7)
-    deck.write(19,value=HA)
-    deck.write(20,value=D6)
-    deck.write(21,value=DJ)
-    deck.write(22,value=S6)
-    deck.write(23,value=SJ)
-    deck.write(24,value=DK)
-    deck.write(25,value=DA)
-    deck.write(26,value=C10)
-    deck.write(27,value=CQ)
-    deck.write(28,value=H9)
-    deck.write(29,value=D8)
-    deck.write(30,value=H6)
-    deck.write(31,value=HJ)
-    deck.write(32,value=C7)
-    deck.write(33,value=S10)
-    deck.write(34,value=H8)
-    deck.write(35,value=DQ)
-
-    points.write(0,value=0)
-    points.write(1,value=0)
-    points.write(2,value=0)
-    points.write(3,value=0)
-    points.write(4,value=10)
-    points.write(5,value=2)
-    points.write(6,value=3)
-    points.write(7,value=4)
-    points.write(8,value=11)
-
-    round_point.write(1)
-
-    return()
 end
 
