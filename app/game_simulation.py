@@ -114,7 +114,6 @@ async def raise_point_response(pp, account, contract):
 
 
 async def claim_win(pp, account, contract):
-
     claim_win = input("Claim Win? ")
     if claim_win.lower() == "y":
         status = (
@@ -143,95 +142,104 @@ async def claim_win(pp, account, contract):
         print("Starting a new round... ")
         trump = (await contract.get_trump().invoke()).result[0]
         print("Trump suit:", Suit(trump).print())
-
         return (round_state, game_state)
     else:
         return (2, 2)
 
 
 async def send_challenge(account, contract, cards):
-    idxs = input("Enter card(s) to play: ")
-    idxs = idxs.split(" ")
-    if len(idxs) == 1:
-        await account.signer.send_transaction(
-            account=account.contract,
-            to=contract.contract_address,
-            selector_name="send_challenge1",
-            calldata=[int(idxs[0])],
-        )
-        print("Challenge: ", Card(cards[int(idxs[0]) - 1]).print())
+    try:
+        idxs = input("Enter card(s) to play: ")
+        idxs = idxs.split(" ")
+        if len(idxs) == 1:
+            await account.signer.send_transaction(
+                account=account.contract,
+                to=contract.contract_address,
+                selector_name="send_challenge1",
+                calldata=[int(idxs[0])],
+            )
+            print("Challenge: ", Card(cards[int(idxs[0]) - 1]).print())
 
-    elif len(idxs) == 2:
-        await account.signer.send_transaction(
-            account=account.contract,
-            to=contract.contract_address,
-            selector_name="send_challenge2",
-            calldata=[int(idxs[0]), int(idxs[1])],
-        )
-        print(
-            "Challenge: ",
-            Card(cards[int(idxs[0]) - 1]).print(),
-            Card(cards[int(idxs[1]) - 1]).print(),
-        )
-    else:
-        await account.signer.send_transaction(
-            account=account.contract,
-            to=contract.contract_address,
-            selector_name="send_challenge3",
-            calldata=[int(idxs[0]), int(idxs[1]), int(idxs[2])],
-        )
-        print(
-            "Challenge: ",
-            Card(cards[int(idxs[0]) - 1]).print(),
-            Card(cards[int(idxs[1]) - 1]).print(),
-            Card(cards[int(idxs[2]) - 1]).print(),
-        )
+        elif len(idxs) == 2:
+            await account.signer.send_transaction(
+                account=account.contract,
+                to=contract.contract_address,
+                selector_name="send_challenge2",
+                calldata=[int(idxs[0]), int(idxs[1])],
+            )
+            print(
+                "Challenge: ",
+                Card(cards[int(idxs[0]) - 1]).print(),
+                Card(cards[int(idxs[1]) - 1]).print(),
+            )
+        else:
+            await account.signer.send_transaction(
+                account=account.contract,
+                to=contract.contract_address,
+                selector_name="send_challenge3",
+                calldata=[int(idxs[0]), int(idxs[1]), int(idxs[2])],
+            )
+            print(
+                "Challenge: ",
+                Card(cards[int(idxs[0]) - 1]).print(),
+                Card(cards[int(idxs[1]) - 1]).print(),
+                Card(cards[int(idxs[2]) - 1]).print(),
+            )
+    except StarkException:
+        print("Transaction failed. Please try again...")
+        await send_challenge(account, contract, cards)
 
 
 async def send_response(account, contract):
-    idxs = input("Enter card(s) to play: ")
-    idxs = idxs.split(" ")
-    if len(idxs) == 1:
-        resp = (
-            await account.signer.send_transaction(
-                account=account.contract,
-                to=contract.contract_address,
-                selector_name="send_response1",
-                calldata=[int(idxs[0])],
-            )
-        ).result[0]
+    try:
+        idxs = input("Enter card(s) to play: ")
+        idxs = idxs.split(" ")
+        if len(idxs) == 1:
+            resp = (
+                await account.signer.send_transaction(
+                    account=account.contract,
+                    to=contract.contract_address,
+                    selector_name="send_response1",
+                    calldata=[int(idxs[0])],
+                )
+            ).result[0]
 
-        if int(resp[0]) != 99:
-            print("Response:", Card(int(resp[0])).print())
+            if int(resp[0]) != 99:
+                print("Response:", Card(int(resp[0])).print())
 
-    elif len(idxs) == 2:
-        resp = (
-            await account.signer.send_transaction(
-                account=account.contract,
-                to=contract.contract_address,
-                selector_name="send_response2",
-                calldata=[int(idxs[0]), int(idxs[1])],
-            )
-        ).result[0]
-        if int(resp[0]) != 99:
-            print("Response:", Card(int(resp[0])).print(), Card(int(resp[1])).print())
+        elif len(idxs) == 2:
+            resp = (
+                await account.signer.send_transaction(
+                    account=account.contract,
+                    to=contract.contract_address,
+                    selector_name="send_response2",
+                    calldata=[int(idxs[0]), int(idxs[1])],
+                )
+            ).result[0]
+            if int(resp[0]) != 99:
+                print(
+                    "Response:", Card(int(resp[0])).print(), Card(int(resp[1])).print()
+                )
 
-    else:
-        resp = (
-            await account.signer.send_transaction(
-                account=account.contract,
-                to=contract.contract_address,
-                selector_name="send_response3",
-                calldata=[int(idxs[0]), int(idxs[1]), int(idxs[2])],
-            )
-        ).result[0]
-        if int(resp[0]) != 99:
-            print(
-                "Response:",
-                Card(int(resp[0])).print(),
-                Card(int(resp[1])).print(),
-                Card(int(resp[2])).print(),
-            )
+        else:
+            resp = (
+                await account.signer.send_transaction(
+                    account=account.contract,
+                    to=contract.contract_address,
+                    selector_name="send_response3",
+                    calldata=[int(idxs[0]), int(idxs[1]), int(idxs[2])],
+                )
+            ).result[0]
+            if int(resp[0]) != 99:
+                print(
+                    "Response:",
+                    Card(int(resp[0])).print(),
+                    Card(int(resp[1])).print(),
+                    Card(int(resp[2])).print(),
+                )
+    except StarkException:
+        print("Transaction failed. Please try again...")
+        await send_response(account, contract)
 
 
 async def contract_factory() -> Tuple[Starknet, Account, Account, StarknetContract]:
@@ -301,12 +309,12 @@ async def game_simulator():
     address2 = account2.contract.contract_address
     game = bura_game.contract_address
 
-    print("player 1 joined from: ", address1)
+    print("Player 1 joined from: ", address1)
     await account1.signer.send_transaction(
         account=player1, to=game, selector_name="join_game", calldata=[3]
     )
 
-    print("player 2 joined from: ", address2)
+    print("Player 2 joined from: ", address2)
     await account2.signer.send_transaction(
         account=player2, to=game, selector_name="join_game", calldata=[5]
     )
