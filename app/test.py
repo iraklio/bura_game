@@ -16,13 +16,10 @@ private_key = 1234512345123451234511111
 # print(acc_client.signer.public_key())
 
 
-private_key = 1234512345123451234511111
-account_address = (
-    2228590030225125150508891573340738205591769373376258767317791333991284410793
+private_key = (
+    3481907968109126366631341857992198869776879917929289470748436139290217987122
 )
-
-
-# # account_address = "0x03e327de1c40540b98d05cbcb13552008e36f0ec8d61d46956d2f9752c294328"
+account_address = "0x06C55071C86Bc33c0C8d95A03190941641e664C43c228E0B0389F6566BDf0965"
 
 key_pair = KeyPair.from_private_key(private_key)
 
@@ -34,16 +31,24 @@ acc_client = AccountClient(
 )
 print(acc_client.get_balance_sync())
 
+print(key_pair.public_key)
 
 # identifier_manager = identifier_manager_from_abi(abi)
 
 # print(identifier_manager)
-contract_address = "0x01336FA7C870A7403ACED14DDA865B75F29113230ED84E3A661F7AF70FE83E7B"
+contract_address = "0x0562ef6ba1fd0982a15aa2b00c9ca3774ddcef2e5b8364673b0041d085b37aec"
 key = 1234
 contract = Contract.from_address_sync(contract_address, acc_client)
-invocation = contract.functions["set_value"].invoke_sync(
-    key, 7, max_fee=500000000000000000000000000
-)
+
+
+call_func = contract.functions["get_trump"].call_sync()
+
+print(call_func)
+
+invocation = contract.functions["leave_game"].invoke_sync(max_fee=5000000000000000000)
 invocation.wait_for_acceptance_sync()
+
+
+print(invocation)
 
 # print(contract.functions)

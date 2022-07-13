@@ -1,0 +1,331 @@
+[
+    {
+        "inputs": [
+            {
+                "name": "seed",
+                "type": "felt"
+            }
+        ],
+        "name": "join_game",
+        "outputs": [],
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "leave_game",
+        "outputs": [],
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "idx",
+                "type": "felt"
+            }
+        ],
+        "name": "send_challenge1",
+        "outputs": [],
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "idx1",
+                "type": "felt"
+            },
+            {
+                "name": "idx2",
+                "type": "felt"
+            }
+        ],
+        "name": "send_challenge2",
+        "outputs": [],
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "idx1",
+                "type": "felt"
+            },
+            {
+                "name": "idx2",
+                "type": "felt"
+            },
+            {
+                "name": "idx3",
+                "type": "felt"
+            }
+        ],
+        "name": "send_challenge3",
+        "outputs": [],
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "idx",
+                "type": "felt"
+            }
+        ],
+        "name": "send_response1",
+        "outputs": [
+            {
+                "name": "c1",
+                "type": "felt"
+            }
+        ],
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "idx1",
+                "type": "felt"
+            },
+            {
+                "name": "idx2",
+                "type": "felt"
+            }
+        ],
+        "name": "send_response2",
+        "outputs": [
+            {
+                "name": "c1",
+                "type": "felt"
+            },
+            {
+                "name": "c2",
+                "type": "felt"
+            }
+        ],
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "idx1",
+                "type": "felt"
+            },
+            {
+                "name": "idx2",
+                "type": "felt"
+            },
+            {
+                "name": "idx3",
+                "type": "felt"
+            }
+        ],
+        "name": "send_response3",
+        "outputs": [
+            {
+                "name": "c1",
+                "type": "felt"
+            },
+            {
+                "name": "c2",
+                "type": "felt"
+            },
+            {
+                "name": "c3",
+                "type": "felt"
+            }
+        ],
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "claim_win",
+        "outputs": [
+            {
+                "name": "round_state",
+                "type": "felt"
+            },
+            {
+                "name": "game_state",
+                "type": "felt"
+            }
+        ],
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "raise_point_challenge",
+        "outputs": [],
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "raise_point_decline",
+        "outputs": [
+            {
+                "name": "round_state",
+                "type": "felt"
+            },
+            {
+                "name": "game_state",
+                "type": "felt"
+            }
+        ],
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "raise_point_accept",
+        "outputs": [
+            {
+                "name": "round_state",
+                "type": "felt"
+            },
+            {
+                "name": "game_state",
+                "type": "felt"
+            }
+        ],
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "get_trump",
+        "outputs": [
+            {
+                "name": "res",
+                "type": "felt"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "get_scores",
+        "outputs": [
+            {
+                "name": "s1",
+                "type": "felt"
+            },
+            {
+                "name": "s2",
+                "type": "felt"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "get_player1",
+        "outputs": [
+            {
+                "name": "res",
+                "type": "felt"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "get_player2",
+        "outputs": [
+            {
+                "name": "res",
+                "type": "felt"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "get_mover",
+        "outputs": [
+            {
+                "name": "res",
+                "type": "felt"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "get_other",
+        "outputs": [
+            {
+                "name": "res",
+                "type": "felt"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "get_round_point",
+        "outputs": [
+            {
+                "name": "res",
+                "type": "felt"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "get_round_point_challenge_sent",
+        "outputs": [
+            {
+                "name": "res",
+                "type": "felt"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "get_round_point_caller",
+        "outputs": [
+            {
+                "name": "res",
+                "type": "felt"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "get_head",
+        "outputs": [
+            {
+                "name": "res",
+                "type": "felt"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "get_cards",
+        "outputs": [
+            {
+                "name": "c1",
+                "type": "felt"
+            },
+            {
+                "name": "c2",
+                "type": "felt"
+            },
+            {
+                "name": "c3",
+                "type": "felt"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    }
+]
