@@ -24,8 +24,8 @@ from starkware.cairo.common.math import (
     )
 
 
-from contracts.helper_fns import points_lookup, max, win_loss_calc
-from contracts.card_deck import initial_deck
+from contracts.helper import points_lookup, max, win_loss_calc
+from contracts.deck import initial_deck
 
 #Game states from MOVER's point of view
 const GAME_STATE_LOST = 0
