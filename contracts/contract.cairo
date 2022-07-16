@@ -778,6 +778,12 @@ func get_other{syscall_ptr:felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 end
 
 @view
+func get_challenge_type{syscall_ptr:felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (res: felt):
+    let (p) = challenge_type.read()
+    return (p)
+end
+
+@view
 func get_round_point{syscall_ptr:felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (res: felt):
     let (p) = round_point.read()
     return (p)
@@ -800,6 +806,45 @@ func get_head{syscall_ptr:felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}()
     let (res) = head.read()
     return (res)
 end
+
+@view
+func get_challenge1{syscall_ptr:felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (res: felt):
+    let (ctype) = challenge_type.read()
+    assert ctype = 1
+    let (ch) = get_other()
+    let (idx) = card_idx.read(1)
+    let (c1) = cards.read(ch, idx)    
+    return (c1)
+end
+
+@view
+func get_challenge2{syscall_ptr:felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (c1: felt, c2: felt):
+    let (ctype) = challenge_type.read()
+    assert ctype = 2
+    let (ch) = get_other()
+    let (idx1) = card_idx.read(1)
+    let (idx2) = card_idx.read(2)
+    let (c1) = cards.read(ch, idx1)
+    let (c2) = cards.read(ch, idx2)
+        
+    return (c1,c2)
+end
+
+@view
+func get_challenge3{syscall_ptr:felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (c1: felt,c2: felt,c3: felt):
+    let (ctype) = challenge_type.read()
+    assert ctype = 2
+    let (ch) = get_other()
+    let (idx1) = card_idx.read(1)
+    let (idx2) = card_idx.read(2)
+    let (idx3) = card_idx.read(3)
+    
+    let (c1) = cards.read(ch, idx1)
+    let (c2) = cards.read(ch, idx2)
+    let (c3) = cards.read(ch, idx3)
+    return (c1,c2,c3)
+end
+
 
 func draw_next_card{syscall_ptr:felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*}() -> (res: felt):
     alloc_locals

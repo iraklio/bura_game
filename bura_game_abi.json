@@ -310,6 +310,54 @@
     },
     {
         "inputs": [],
+        "name": "get_challenge1",
+        "outputs": [
+            {
+                "name": "res",
+                "type": "felt"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "get_challenge2",
+        "outputs": [
+            {
+                "name": "c1",
+                "type": "felt"
+            },
+            {
+                "name": "c2",
+                "type": "felt"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "get_challenge3",
+        "outputs": [
+            {
+                "name": "c1",
+                "type": "felt"
+            },
+            {
+                "name": "c2",
+                "type": "felt"
+            },
+            {
+                "name": "c3",
+                "type": "felt"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
         "name": "get_cards",
         "outputs": [
             {

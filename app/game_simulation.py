@@ -158,6 +158,9 @@ async def send_challenge(account, contract, cards):
                 selector_name="send_challenge1",
                 calldata=[int(idxs[0])],
             )
+
+            (c) = (await contract.get_challenge1().invoke()).result
+            print(c)
             print("Challenge: ", Card(cards[int(idxs[0]) - 1]).print())
 
         elif len(idxs) == 2:
@@ -167,6 +170,13 @@ async def send_challenge(account, contract, cards):
                 selector_name="send_challenge2",
                 calldata=[int(idxs[0]), int(idxs[1])],
             )
+            
+            (res1, res2) = (await contract.get_challenge2().invoke()).result     
+            print((res1, res2))
+
+
+
+
             print(
                 "Challenge: ",
                 Card(cards[int(idxs[0]) - 1]).print(),
@@ -287,12 +297,12 @@ async def make_a_move(type, mname, mcontract, oname, ocontract, game_contract):
                 return 1
         else:
             if type == "C":
-                await send_challenge(mcontract, game_contract, cards)
+                await send_challenge(mcontract, game_contract, cards)                
             else:
                 await send_response(mcontract, game_contract)
     else:
         if type == "C":
-            await send_challenge(mcontract, game_contract, cards)
+            await send_challenge(mcontract, game_contract, cards)            
         else:
             await send_response(mcontract, game_contract)
 

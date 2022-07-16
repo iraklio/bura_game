@@ -1,5 +1,5 @@
 
-
+from starkware.starkware_utils.error_handling import StarkException
 from utils import TestSigner as Signer
 
 
@@ -71,6 +71,26 @@ class SimpleBuraEngine():
         return (Card(c1), Card(c2), Card(c3))
     
 
+    async def retrieve_challenge(self) -> list:        
+        try:
+            ctype = (await self.bura_contract.get_challenge_type().invoke()).result[0]            
+            if ctype == 1:
+                c1 = (await self.bura_contract.get_challenge1().invoke()).result[0]
+                return [Card(c1)]
+            elif ctype == 2:                
+                (c1, c2) = (await self.bura_contract.get_challenge2().invoke()).result
+                return [Card(c1), Card(c2)]
+            elif ctype == 3:
+                (c1, c2, c3) =  (await self.bura_contract.get_challenge3().invoke()).result
+                return [Card(c1), Card(c2), Card(c3)]
+            else:
+                print(f"Invalid challenge type: {ctype}")
+                return []
+
+        except StarkException:            
+            print('Error in retrieve_challenge')
+            return []
+
     async def retrieve_trump(self):
         trump = (await self.bura_contract.get_trump().invoke()).result[0]
         return trump
@@ -79,7 +99,7 @@ class SimpleBuraEngine():
     async def challenge(self) -> list:
 
         (c1, c2, c3) = await self.retrieve_hand()
-        trump = await self.retrieve_trump()
+        trump = await self.retrieve_trump()        
 
         if c1.suit == c2.suit and c2.suit == c3.suit:
             return [c1, c2, c3]
@@ -106,13 +126,14 @@ class SimpleBuraEngine():
             return [c1]
 
 
-    async def respond(self, ch:list) -> list:
+    async def respond(self) -> list:
 
         (c1, c2, c3) = await self.retrieve_hand()
+        hand = (c1, c2, c3)
         trump = await self.retrieve_trump()
 
-        hand = (c1, c2, c3)
-
+        ch = await self.retrieve_challenge()
+        
         if len(ch) == 1:
             for c in hand:
                 if c.suit == ch[0].suit:
