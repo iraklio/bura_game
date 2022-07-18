@@ -30,9 +30,14 @@ class BuraPlayer():
             )
         ).result[0]
 
-        (c1, c2, c3) = cards
+        (c1, c2, c3) = cards        
         return (Card(c1), Card(c2), Card(c3))
     
+
+    async def is_engine_challenger(self) -> bool:
+        mover = (await self.bura_contract.get_mover().invoke()).result[0]
+        return mover != self.account.contract_address
+
 
     async def retrieve_trump(self):
         trump = (await self.bura_contract.get_trump().invoke()).result[0]
@@ -55,20 +60,22 @@ class BuraPlayer():
             return False
 
 
-
-
-    async def respond(self, idxs:list) -> bool:
-        try:
-            selector_name = f"send_response{len(idxs)}"
-            await self.signer.send_transaction(
+    async def response(self, idxs:list) -> bool:        
+        selector_name = f"send_response{len(idxs)}"
+        _response = (await self.signer.send_transaction(
                     account=self.account,
                     to=self.bura_contract.contract_address,
                     selector_name=selector_name,
                     calldata=idxs,
-                )            
-            return True            
-        except StarkException:            
-            return False
+                )).result[0]            
+            
+        if _response[0] == 99:
+            return []
+        else:
+            res = []
+            for r in _response:
+                res.append(Card(r))
+            return res
     
 
         

@@ -44,7 +44,7 @@ async def button_send( controller, event):
 
     (mx, my) = pygame.mouse.get_pos()
     if x + w > mx > x and y + h > my > y and event.type == pygame.MOUSEBUTTONDOWN:
-        await controller.make_move()
+        await controller.send_action()
       
 
 
@@ -111,10 +111,7 @@ async def game_wrapper():
     show_message('Setting Up Player Account...', 0, 50)
     player = await BuraPlayer().create(starknet, bura_contract)
 
-    controller = SpriteController(player, engine, display)
-    await controller.set_engine_cards()
-    await controller.set_player_cards()   
-    
+    controller = await SpriteController().create(player, engine)    
 
     running = True
     while running:
@@ -125,16 +122,17 @@ async def game_wrapper():
                 running = False
 
             #display.fill(0)
-            display.fill(background_color)
-            #player_cards.update(event)
+            display.fill(background_color)            
 
             await controller.update(event)
             await controller.draw(display)
+#            print(controller.is_engine_move)
 
+            # if controller.is_engine_move:
+            #     await controller.engine_challenge()
             
-            #player_cards.draw(display)
-            #other_cards.draw(display)
-            await button_send( controller, event)
+            await button_send( controller, event)           
+            
             await button_claim(controller, event)
             await button_raise(controller, event)        
         

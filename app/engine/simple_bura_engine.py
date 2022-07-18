@@ -30,7 +30,11 @@ class Card():
 
     def get_suit_str(self) -> str:    
         return "CDHS"[self.suit]
-
+    
+    def get_card_str(self) -> str:        
+        r = "6789TJQKA"[self.rank]
+        s = "♣♦♥♠"[self.suit]
+        return r + s
     
 
 
@@ -97,80 +101,121 @@ class SimpleBuraEngine():
 
 
     async def challenge(self) -> list:
+        try:
+            selector_name, calldata = await self.calculate_challenge()        
+            await self.signer.send_transaction(
+                    account=self.account,
+                    to=self.bura_contract.contract_address,
+                    selector_name=selector_name,
+                    calldata=calldata,
+                )
+            return calldata            
+        except StarkException:            
+            return []
+        
 
+    async def calculate_challenge(self) -> list:
         (c1, c2, c3) = await self.retrieve_hand()
-        trump = await self.retrieve_trump()        
-
+        trump = await self.retrieve_trump()
+        calldata = []
         if c1.suit == c2.suit and c2.suit == c3.suit:
-            return [c1, c2, c3]
+            calldata = [1, 2, 3]
         elif c1.suit == c2.suit:
-            return [c1, c2]
+            calldata =  [1, 2]
         elif c2.suit == c3.suit:
-            return [c2, c3]
+            calldata =  [2, 3]
         elif c1.suit == c3.suit:
-            return [c1, c3]
+            calldata =  [1, 3]
         else:
             if c1.rank <=3 and c1.suit != trump:
-                return [c1]
-            if c2.rank <=3 and c2.suit != trump:
-                return [c2]
-            if c3.rank <=3 and c3.suit != trump:
-                return [c3]
-            if c1.rank in [5, 6, 7] and c1.suit != trump:
-                return [c1]
-            if c2.rank in [5, 6, 7] and c2.suit != trump:
-                return [c2]
-            if c3.rank in [5, 6, 7] and c3.suit != trump:
-                return [c3]
+                calldata =  [1]
+            elif c2.rank <=3 and c2.suit != trump:
+                calldata =  [2]
+            elif c3.rank <=3 and c3.suit != trump:
+                calldata = [3]
+            elif c1.rank in [5, 6, 7] and c1.suit != trump:
+                calldata = [1]
+            elif c2.rank in [5, 6, 7] and c2.suit != trump:
+                calldata =  [2]
+            elif c3.rank in [5, 6, 7] and c3.suit != trump:
+                calldata =  [3]
+            else:
+                calldata = [1]
+        
+        selector_name = f"send_challenge{len(calldata)}"
+        return selector_name, calldata
 
-            return [c1]
 
+    async def response(self) -> list:
+        selector_name, calldata = await self.calculate_response()
+        response = (
+            await self.signer.send_transaction(
+                account=self.account,
+                to=self.bura_contract.contract_address,
+                selector_name=selector_name,
+                calldata=calldata,
+            )
+        ).result[0]
 
-    async def respond(self) -> list:
+        print("response: ", response)
 
-        (c1, c2, c3) = await self.retrieve_hand()
+        if response[0] == 99:
+            return []
+        else:
+            res = []
+            for r in response:
+                res.append(Card(r))
+            return res
+
+    async def calculate_response(self) -> list:
+        (c1, c2, c3) = await self.retrieve_hand()        
         hand = (c1, c2, c3)
         trump = await self.retrieve_trump()
-
         ch = await self.retrieve_challenge()
-        
+
+        calldata = []
+        selector_name = ""
+        idx_point = []
         if len(ch) == 1:
-            for c in hand:
+            selector_name = "send_response1"
+            for (i,c) in enumerate(hand):
+                idx_point.append((i+1, c.get_point()))
                 if c.suit == ch[0].suit:
                     if c.rank > ch[0].rank:
-                        return [c]
+                        calldata = [i+1]
+                        break
                 elif c.suit == trump:
-                    return [c]
+                    calldata = [i+1]
+                    break
 
-            return []
+            if not calldata:
+                idx_point.sort(key=lambda x: x[1])
+                calldata = [idx_point[0][0]]                    
+
         elif len(ch) == 2:
+            selector_name = "send_response2"
             chs = sort(ch, trump)
             o1 = chs[0]
             o2 = chs[1]
-
             if less(o1, c1, trump) and less(o2, c2, trump):
-                return [c1, c2]
-            if less(o1, c1, trump) and less(o2, c3, trump):
-                return [c1, c3]
-            if less(o1, c2, trump) and less(o2, c3, trump):
-                return [c2, c3]
-
-            return []
+                calldata =  [1, 2]
+            elif less(o1, c1, trump) and less(o2, c3, trump):
+                calldata =  [1, 3]
+            elif less(o1, c2, trump) and less(o2, c3, trump):
+                calldata =  [2, 3]
+            else:
+                for (i,c) in enumerate(hand):
+                    idx_point.append((i+1, c.get_point()))
+                idx_point.sort(key=lambda x: x[1])
+                calldata = [idx_point[0][0], idx_point[1][0]]
 
         elif len(ch) == 3:
-            chs = sort(ch, trump)
-            o1 = chs[0]
-            o2 = chs[1]
-            o2 = chs[2]
-            if (
-                less(o1, c1, trump)
-                and less(o2, c2, trump)
-                and less(o2, c2, trump)
-            ):
-                return [c1, c2, c3]
+            selector_name = "send_response3"
+            calldata = [ 1, 2, 3]
 
-            return []
 
+        print("calldata", calldata)
+        return selector_name, calldata
       
     
     async def claim(self) -> bool:
@@ -189,20 +234,10 @@ class SimpleBuraEngine():
 
 
 def less(c1, c2, trump) -> bool:
-    if c1.suit == c2.suit:
-        if c1.rank < c2.rank:
-            return True
-        else:
-            return False
-    else:
-        if c2.suit == trump:
-            return True
-        else:
-            return False
-
+    return c1.rank < c2.rank if c1.suit == c2.suit else c2.suit == trump
+    
 
 def sort(cards, trump) -> list:
-
     if len(cards) == 0 or len(cards) == 1:
         return cards
 

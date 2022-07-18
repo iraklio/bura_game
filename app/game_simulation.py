@@ -341,6 +341,8 @@ async def game_simulator():
         challenger = (await bura_game.get_mover().invoke()).result[0]
         responder = (await bura_game.get_other().invoke()).result[0]
 
+        print(challenger)
+
         (mcontract, mname) = pmap[challenger]
         (ocontract, oname) = pmap[responder]
         print("--------------------------------------------")
