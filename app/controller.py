@@ -1,4 +1,4 @@
-from time import sleep
+
 import pygame as pygame
 import logging
 

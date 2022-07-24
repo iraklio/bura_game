@@ -1,5 +1,5 @@
 
-from engine.simple_bura_engine import Card
+from engine import Card
 from starkware.starkware_utils.error_handling import StarkException
 
 from utils import TestSigner as Signer
@@ -118,8 +118,9 @@ class BuraPlayer():
             logger.info(f'Failed calling: raise_point_challenge()')            
             return False
 
-    async def raise_point_response(self, accept):
 
+
+    async def raise_point_response(self, accept):
         selector_name = 'raise_point_accept' if accept else 'raise_point_decline'
         try:
             status = (await self.signer.send_transaction(

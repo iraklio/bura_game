@@ -5,10 +5,10 @@ import asyncio
 from starkware.starknet.testing.starknet import Starknet, StarknetContract
 from starkware.starkware_utils.error_handling import StarkException
 
-from engine.simple_bura_engine import SimpleBuraEngine
-from bura_player import BuraPlayer
+from engine import SimpleBuraEngine
+from player import BuraPlayer
 from TextProgress import TextProgress
-from sprite_controller import CardSprite, SpriteController
+from controller import SpriteController
 
 import pygame as pygame
 import sys
