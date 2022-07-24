@@ -1,13 +1,21 @@
-from engine.simple_bura_engine import SimpleBuraEngine
+
 from engine.simple_bura_engine import Card
 from starkware.starkware_utils.error_handling import StarkException
 
 from utils import TestSigner as Signer
 
+import logging
+
+logger = logging.getLogger("Bura.Player")
+handler  = logging.StreamHandler()
+handler.setFormatter(logging.Formatter("%(levelname)s|%(name)s|%(message)s"))
+logger.addHandler(handler)
+logger.setLevel(logging.INFO)
+
+
 class BuraPlayer():
     def __init__(self) -> None:
-        pass
-        
+        pass        
 
     @classmethod
     async def create(cls, starknet, bura_contract):
@@ -18,6 +26,8 @@ class BuraPlayer():
         self.bura_contract = bura_contract
         await self.signer.send_transaction(
             account=self.account, to=bura_contract.contract_address, selector_name="join_game", calldata=[3])
+        
+        
         return self
 
     async def retrieve_hand(self):    
@@ -34,9 +44,9 @@ class BuraPlayer():
         return (Card(c1), Card(c2), Card(c3))
     
 
-    async def is_engine_challenger(self) -> bool:
+    async def is_mover(self) -> bool:
         mover = (await self.bura_contract.get_mover().invoke()).result[0]
-        return mover != self.account.contract_address
+        return mover == self.account.contract_address
 
 
     async def retrieve_trump(self):
@@ -44,39 +54,85 @@ class BuraPlayer():
         return trump
 
 
+    async def retrieve_score(self):        
+        (s1, s2) = (await self.bura_contract.get_scores().invoke()).result
+        return s1 - 21, s2 - 21
     
-
     async def challenge(self, idxs:list) -> bool:
-        try:
-            selector_name = f"send_challenge{len(idxs)}"
+        try:            
+            selector_name = f"send_challenge{len(idxs)}"            
             await self.signer.send_transaction(
                     account=self.account,
                     to=self.bura_contract.contract_address,
                     selector_name=selector_name,
                     calldata=idxs,
-                )            
-            return True            
-        except StarkException:            
+                )                
+            logger.info(f'Calling: {selector_name}({idxs})')
+            return True
+        except StarkException:
+            logger.info(f'challenge(): Exception thrown when sending a challenge')
             return False
 
 
-    async def response(self, idxs:list) -> bool:        
-        selector_name = f"send_response{len(idxs)}"
-        _response = (await self.signer.send_transaction(
+    async def response(self, idxs:list):
+        try:
+            selector_name = f"send_response{len(idxs)}"
+            resp = (await self.signer.send_transaction(
+                        account=self.account,
+                        to=self.bura_contract.contract_address,
+                        selector_name=selector_name,
+                        calldata=idxs,
+                    )).result[0]
+
+            logger.info(f'Calling: {selector_name}({idxs})')
+            return (True, []) if resp[0] == 99 else (True, [ Card(x) for x in resp ])
+        except StarkException:
+            logger.info(f'response(): Exception thrown when sending a response')
+            return (False, [])
+
+
+    async def claim_win(self) -> bool:
+        try:
+            status = (await self.signer.send_transaction(
+                    account=self.account,
+                    to=self.bura_contract.contract_address,
+                    selector_name='claim_win',
+                    calldata=[],
+                )).result[0]            
+            logger.info(f'Calling: raise_point_challenge(). Game state = {status}')
+            return status
+        except StarkException:            
+            return []
+    
+    async def raise_point_challenge(self) -> bool:
+        try:
+            await self.signer.send_transaction(
+                    account=self.account,
+                    to=self.bura_contract.contract_address,
+                    selector_name='raise_point_challenge',
+                    calldata=[],
+                )
+            logger.info(f'Calling: raise_point_challenge()')
+            return True
+        except StarkException:
+            logger.info(f'Failed calling: raise_point_challenge()')            
+            return False
+
+    async def raise_point_response(self, accept):
+
+        selector_name = 'raise_point_accept' if accept else 'raise_point_decline'
+        try:
+            status = (await self.signer.send_transaction(
                     account=self.account,
                     to=self.bura_contract.contract_address,
                     selector_name=selector_name,
-                    calldata=idxs,
-                )).result[0]            
-            
-        if _response[0] == 99:
-            return []
-        else:
-            res = []
-            for r in _response:
-                res.append(Card(r))
-            return res
-    
+                    calldata=[],
+                )).result[0]
+            logger.info(f'Calling: {selector_name}({accept})')
+            return (True, status)
+        except StarkException:
+            logger.info(f'Failed calling: {selector_name}({accept})')
+            return (False, None)
 
         
         

@@ -833,7 +833,7 @@ end
 @view
 func get_challenge3{syscall_ptr:felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (c1: felt,c2: felt,c3: felt):
     let (ctype) = challenge_type.read()
-    assert ctype = 2
+    assert ctype = 3
     let (ch) = get_other()
     let (idx1) = card_idx.read(1)
     let (idx2) = card_idx.read(2)

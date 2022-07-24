@@ -27,11 +27,14 @@ background_color =  (34,139,34)
 grey = (220,220,220)
 
 pygame.init()
-font = pygame.font.SysFont("Arial", 20)
+font = pygame.font.SysFont("Consolas", 20)
 clock = pygame.time.Clock()
 display = pygame.display.set_mode((display_width, display_height))
 
 async def button_send( controller, event):
+
+    if not controller.is_player_mover:
+        return
 
     (x,y,w,h) = (450, 650, 144, 40)
     inactive_color = (180, 180, 158)
@@ -45,15 +48,33 @@ async def button_send( controller, event):
     (mx, my) = pygame.mouse.get_pos()
     if x + w > mx > x and y + h > my > y and event.type == pygame.MOUSEBUTTONDOWN:
         await controller.send_action()
-      
+
+
+async def button_continue( controller, event):
+
+    if controller.is_continue_state() or (not controller.is_player_mover and not controller.is_challenge_active):
+        x, y, w, h = 70, 400, 144, 40
+        inactive_color = (180,180,158)
+        active_color = (228,234,23)
+
+        (mx,my) = pygame.mouse.get_pos()
+        clicked = event.type == pygame.MOUSEBUTTONDOWN
+        pygame.draw.rect(display, active_color, (x, y, w, h))
+        textSurface = font.render("Continue...", True, black)
+        TextRect = textSurface.get_rect()
+        TextRect.center = ((x + (w / 2)), (y + (h / 2)))
+        display.blit(textSurface, TextRect)
+        if x + w > mx > x and y + h > my > y and clicked:
+            await controller.continue_action()
+
 
 
 async def button_claim( controller, event):
 
-    x = 70
-    y = 250
-    w = 144
-    h = 40
+    if not controller.is_player_mover:
+        return
+
+    x, y, w, h = 70, 250, 144, 40
     inactive_color = (180,180,158)
     active_color = (228,234,23)
 
@@ -65,15 +86,16 @@ async def button_claim( controller, event):
     TextRect.center = ((x + (w / 2)), (y + (h / 2)))
     display.blit(textSurface, TextRect)
     if x + w > mx > x and y + h > my > y and clicked:
-        pass
+        await controller.claim_action()
         
+    
 
 async def button_raise( controller, event):
 
-    x = 70
-    y = 310
-    w = 144
-    h = 40
+    if not controller.is_player_mover:
+        return
+
+    x, y, w, h = 70, 310, 144, 40    
     inactive_color = (180,180,158)
     active_color = (228,234,23)
     (mx,my) = pygame.mouse.get_pos()
@@ -85,8 +107,8 @@ async def button_raise( controller, event):
     display.blit(textSurface, TextRect)
 
     if x + w > mx > x and y + h > my > y and clicked:
-        pass
-        
+        await controller.raise_point_action()
+
 
 def show_message(msg, x, y):
     renderer = TextProgress(font, msg, black, (100, 40, 40))
@@ -126,15 +148,11 @@ async def game_wrapper():
 
             await controller.update(event)
             await controller.draw(display)
-#            print(controller.is_engine_move)
 
-            # if controller.is_engine_move:
-            #     await controller.engine_challenge()
-            
-            await button_send( controller, event)           
-            
+            await button_send( controller, event)                       
             await button_claim(controller, event)
-            await button_raise(controller, event)        
+            await button_raise(controller, event)
+            await button_continue(controller, event)
         
         pygame.display.flip()
 

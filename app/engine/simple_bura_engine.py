@@ -2,6 +2,14 @@
 from starkware.starkware_utils.error_handling import StarkException
 from utils import TestSigner as Signer
 
+import logging
+
+logger = logging.getLogger("Bura.Engine")
+handler  = logging.StreamHandler()
+handler.setFormatter(logging.Formatter("%(levelname)s|%(name)s|%(message)s"))
+logger.addHandler(handler)
+logger.setLevel(logging.INFO)
+
 
 class Card():
     def __init__(self, id:int):
@@ -84,8 +92,8 @@ class SimpleBuraEngine():
             elif ctype == 2:                
                 (c1, c2) = (await self.bura_contract.get_challenge2().invoke()).result
                 return [Card(c1), Card(c2)]
-            elif ctype == 3:
-                (c1, c2, c3) =  (await self.bura_contract.get_challenge3().invoke()).result
+            elif ctype == 3:                
+                (c1, c2, c3) = (await self.bura_contract.get_challenge3().invoke()).result
                 return [Card(c1), Card(c2), Card(c3)]
             else:
                 print(f"Invalid challenge type: {ctype}")
@@ -146,26 +154,27 @@ class SimpleBuraEngine():
         return selector_name, calldata
 
 
-    async def response(self) -> list:
-        selector_name, calldata = await self.calculate_response()
-        response = (
-            await self.signer.send_transaction(
-                account=self.account,
-                to=self.bura_contract.contract_address,
-                selector_name=selector_name,
-                calldata=calldata,
-            )
-        ).result[0]
+    async def response(self):
+        try:
+            selector_name, idxs = await self.calculate_response()
+            #print('Engine response:', selector_name)
+            #print('Engine response:', calldata)
+            resp = (
+                await self.signer.send_transaction(
+                    account=self.account,
+                    to=self.bura_contract.contract_address,
+                    selector_name=selector_name,
+                    calldata=idxs,
+                )
+            ).result[0]
 
-        print("response: ", response)
+            logger.info(f'Calling: {selector_name}({idxs})')
+            return (True, []) if resp[0] == 99 else (True, [ Card(x) for x in resp ])
+        except StarkException:
+            logger.info(f'response(): Exception thrown when sending a response')
+            return (False, [])
 
-        if response[0] == 99:
-            return []
-        else:
-            res = []
-            for r in response:
-                res.append(Card(r))
-            return res
+        
 
     async def calculate_response(self) -> list:
         (c1, c2, c3) = await self.retrieve_hand()        
@@ -213,16 +222,37 @@ class SimpleBuraEngine():
             selector_name = "send_response3"
             calldata = [ 1, 2, 3]
 
-
-        print("calldata", calldata)
         return selector_name, calldata
-      
     
     async def claim(self) -> bool:
         """Claim win and return the result - won/lost."""
         pass
 
     
+
+
+    def calculate_raise_point_response(self):
+        return True
+
+
+    async def raise_point_response(self):
+        
+        accept = self.calculate_raise_point_response()
+        selector_name = 'raise_point_accept' if accept else 'raise_point_decline'
+        try:
+            status = (await self.signer.send_transaction(
+                    account=self.account,
+                    to=self.bura_contract.contract_address,
+                    selector_name=selector_name,
+                    calldata=[],
+                )).result[0]
+            logger.info(f'Calling: {selector_name}({accept})')
+            return (True, status)
+        except StarkException:            
+            logger.info(f'Failed calling: {selector_name}()')
+            return (False, None)
+
+
     async def raise_challenge(self) -> bool:
         """Raise the point bet"""
         pass
