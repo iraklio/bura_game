@@ -1,4 +1,3 @@
-# bura_game
 Starknet implementation of Bura card game
 
  
