@@ -1,1 +1,0 @@
-0x04c57b955aa757111c7fb5825060f44dea59050e5539e7972edfd1d3164ba536:artifacts/abis/contract.json:buragame

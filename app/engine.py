@@ -285,11 +285,7 @@ class SimpleBuraEngine():
         """Raise the point bet"""
         pass
 
-    async def raise_respond(self) -> bool:
-        """Respond to raise from the opponent"""
-        pass
-
-
+    
 
 def less(c1, c2, trump) -> bool:
     return c1.rank < c2.rank if c1.suit == c2.suit else c2.suit == trump
