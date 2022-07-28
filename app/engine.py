@@ -49,11 +49,8 @@ class Card():
 class SimpleBuraEngine():
 
     def __init__(self) -> None:
-
-        self.pile = []
-        self.pile_count = 0
-        self.pile_other = []
-        self.unplayed_cards = range(36)
+        self.points = 0
+        self.hidden_cards = 0        
 
     
     @classmethod
@@ -154,9 +151,9 @@ class SimpleBuraEngine():
         return selector_name, calldata
 
 
-    async def response(self):
+    async def response(self, ch):
         try:
-            selector_name, idxs = await self.calculate_response()
+            selector_name, idxs = await self.calculate_response(ch)
             #print('Engine response:', selector_name)
             #print('Engine response:', calldata)
             resp = (
@@ -169,18 +166,31 @@ class SimpleBuraEngine():
             ).result[0]
 
             logger.info(f'Calling: {selector_name}({idxs})')
-            return (True, []) if resp[0] == 99 else (True, [ Card(x) for x in resp ])
+            if resp[0] == 99:
+                return (True, []) 
+            else:
+                for c in ch:
+                    self.points += c.get_point()
+                for x in resp:
+                    self.points += Card(x).get_point()
+
+                return (True, [ Card(x) for x in resp ])
         except StarkException:
             logger.info(f'response(): Exception thrown when sending a response')
             return (False, [])
 
-        
+    
+    def update_points(self, cards):
+        for c in cards:
+            self.points += c.get_point()
+            self.hidden_cards += len(cards)
 
-    async def calculate_response(self) -> list:
+
+    async def calculate_response(self, ch) -> list:
         (c1, c2, c3) = await self.retrieve_hand()        
         hand = (c1, c2, c3)
         trump = await self.retrieve_trump()
-        ch = await self.retrieve_challenge()
+        #ch = await self.retrieve_challenge()
 
         calldata = []
         selector_name = ""
@@ -220,15 +230,33 @@ class SimpleBuraEngine():
 
         elif len(ch) == 3:
             selector_name = "send_response3"
-            calldata = [ 1, 2, 3]
+            calldata = [1, 2, 3]
 
         return selector_name, calldata
     
-    async def claim(self) -> bool:
-        """Claim win and return the result - won/lost."""
-        pass
+    async def claim_win(self) -> list:
 
-    
+        expected_points = self.points + self.hidden_cards * 0.5
+        logger.info(f'Claim_win(): Expected points {expected_points}')
+        if expected_points >= 31:
+            try:
+                status = (await self.signer.send_transaction(
+                        account=self.account,
+                        to=self.bura_contract.contract_address,
+                        selector_name='claim_win',
+                        calldata=[],
+                    )).result[0]            
+                logger.info(f'claim_win(): Claiming, Game state = {status}')                
+                self.points = 0
+                self.hidden_cards = 0
+
+                return status
+            except StarkException:
+                logger.info(f'claim_win(): Failed with StarkException')
+                return []
+        else:
+            return []
+
 
 
     def calculate_raise_point_response(self):

@@ -22,6 +22,10 @@ class SpriteController():
 
         return self
 
+
+    async def restart_engine(self):
+        self.engine.points = 0
+        self.engine.hidden_cards = 0
     
     async def set_trump_score_mover(self):
 
@@ -118,13 +122,14 @@ class SpriteController():
                 is_raise_point_challenge_active = not self.is_raise_point_challenge_active ):
             return                        
     
-        player_idxs = [s.index for s in self.player_cards.sprites() if s.selected ]
+        player_idxs = [ s.index for s in self.player_cards.sprites() if s.selected ]
+        player_crds = [ s.card  for s in self.player_cards.sprites() if s.selected ]
         if player_idxs:
             if await self.player.challenge(player_idxs):
                 self.is_challenge_active = True
                 self.is_player_mover = False
 
-                success, engine_cards = await self.engine.response()
+                success, engine_cards = await self.engine.response(player_crds)
                 if success:
                     self.is_challenge_active = False
 
@@ -187,6 +192,8 @@ class SpriteController():
         
                 else:
                     self.is_player_mover = False
+                    engine_crds = [ s.card for s in self.engine_cards.sprites() if s.selected ]
+                    self.engine.update_points(engine_crds)
 
                     for idx in player_idxs:
                         for s in self.player_cards.sprites():
@@ -203,6 +210,13 @@ class SpriteController():
                 is_player_mover = not self.is_player_mover, 
                 is_challenge_active = not self.is_challenge_active,
                 is_raise_point_challenge_active = not self.is_raise_point_challenge_active ):
+            return
+        
+        status = await self.engine.claim_win()
+        if status:            
+            await self.set_engine_cards()
+            await self.set_player_cards()
+            await self.set_trump_score_mover()            
             return
 
         engine_idxs = await self.engine.challenge()            
@@ -238,6 +252,7 @@ class SpriteController():
                 await self.set_engine_cards()
                 await self.set_player_cards()
                 await self.set_trump_score_mover()
+                await self.restart_engine()
         else:
             logger.info(f"claim_action(): Can't claim. It's not player's move.")
 

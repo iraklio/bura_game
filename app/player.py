@@ -99,7 +99,7 @@ class BuraPlayer():
                     selector_name='claim_win',
                     calldata=[],
                 )).result[0]            
-            logger.info(f'Calling: raise_point_challenge(). Game state = {status}')
+            logger.info(f'Calling: claim_win(). Game state = {status}')
             return status
         except StarkException:            
             return []
