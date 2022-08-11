@@ -34,11 +34,11 @@ pip3 install cairo-lang
 ![image](https://user-images.githubusercontent.com/20588945/184055201-218c09ce-02fd-4100-8e90-7dd2bb43bdda.png)
 
 
-Cards can be selected and player by mouse click, and pressing send:
+Cards can be selected by mouse click, and then played by pressing send button:
 ![image](https://user-images.githubusercontent.com/20588945/184055374-7f11735b-594c-44e2-9429-88502ca30abf.png)
 
 
-Next round starts by pressing continue..
+Next round starts by pressing continue... button:
 ![image](https://user-images.githubusercontent.com/20588945/184055620-7fde2e05-af22-4d48-aa1f-cd50329073ec.png)
 
 
