@@ -10,12 +10,17 @@ Clone the repo and run:
 
 python3 app/game.py
 
-System requremnts: Winows 11 that has WSL2 with GUI support installed.  Have not been tested but should run on Linux as well. 
+System requirements: Windows 11 that has WSL2 with GUI support installed. Have not been tested but should run on Linux as well.
 
 Package requrements:
 
 Pygame. For installation run:
+
 pip install pygame
+
+Asyncio. For installation run:
+
+pip install asyncio
 
 Starknet/Cairo. Installation instructions are here
 
