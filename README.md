@@ -33,7 +33,7 @@ Cards can be selected and player by mouse click, and pressing send:
 ![image](https://user-images.githubusercontent.com/20588945/184055374-7f11735b-594c-44e2-9429-88502ca30abf.png)
 
 
-Next round start by pressing continue..
+Next round starts by pressing continue..
 ![image](https://user-images.githubusercontent.com/20588945/184055620-7fde2e05-af22-4d48-aa1f-cd50329073ec.png)
 
 
